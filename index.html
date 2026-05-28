@@ -128,10 +128,15 @@
     /* "mehr" button hit area */
     #mehr-hit {
       position: absolute;
-      bottom: 36px;
+      bottom: 8px;
       left: 50%; transform: translateX(-50%);
-      width: 120px; height: 44px;
+      width: 150px; height: 64px;
       cursor: pointer; z-index: 7;
+    }
+
+    /* Smooth opacity fade for slide-to-slide transitions */
+    #textslide-img {
+      transition: opacity 0.22s ease;
     }
 
     /* ── DETAIL SCREEN ── */
@@ -187,6 +192,21 @@
       text-align: center; flex: 1;
     }
 
+    /* ── Slider position dot ── */
+    #slider-dot {
+      position: absolute;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #1a5caa;
+      box-shadow: 0 0 0 2px rgba(255,255,255,0.85);
+      transform: translateX(-50%);
+      pointer-events: none;
+      z-index: 4;
+      top: 732px;
+      left: 125px;
+      transition: left 0.08s linear;
+    }
+
     /* ── Flash transition ── */
     #flash {
       position: absolute; inset: 0;
@@ -220,6 +240,9 @@
 
     <!-- Slider drag area (bottom 190px) -->
     <div id="slider-zone"></div>
+
+    <!-- Position indicator dot inside slider pill -->
+    <div id="slider-dot"></div>
 
     <!-- Target icon (top right) – stays in dreh, resets view -->
     <div class="hit-target" id="dreh-target"></div>
@@ -441,10 +464,12 @@ function flash(cb) {
 // ══════════════════════════════════════════════════════════════════
 
 function setFrame(n) {
-  // wrap around
   n = ((n - 1 + TOTAL_FRAMES) % TOTAL_FRAMES) + 1;
   S.frame = n;
   $('dreh-img').src = `images/dreh-f${n}.png`;
+  // Move slider dot: track runs from x=125 to x=265
+  const x = 125 + (n - 1) / (TOTAL_FRAMES - 1) * 140;
+  $('slider-dot').style.left = x + 'px';
 }
 
 function clearNav() {
@@ -486,6 +511,7 @@ function dragStart(cx) {
   drag = { startX: cx, startFrame: S.frame };
   clearTimeout(S.stopTimer);
   clearNav();
+  $('slider-dot').style.transition = 'none';
 }
 
 function dragMove(cx) {
@@ -503,6 +529,7 @@ function dragMove(cx) {
 function dragEnd() {
   if (!drag) return;
   drag = null;
+  $('slider-dot').style.transition = 'left 0.08s linear';
   scheduleNav();
 }
 
@@ -564,10 +591,21 @@ function goTextslide(key, idx) {
   S.closeupKey = key;
   const d = CLOSEUPS[key];
   S.slideIdx = ((idx % d.slides.length) + d.slides.length) % d.slides.length;
-  flash(() => {
-    $('textslide-img').src = d.slides[S.slideIdx];
-    showOnly('screen-textslide');
-  });
+  const img = $('textslide-img');
+  const alreadyOnSlide = document.querySelector('.screen.active')?.id === 'screen-textslide';
+
+  if (alreadyOnSlide) {
+    img.style.opacity = '0';
+    setTimeout(() => {
+      img.src = d.slides[S.slideIdx];
+      img.style.opacity = '1';
+    }, 220);
+  } else {
+    flash(() => {
+      img.src = d.slides[S.slideIdx];
+      showOnly('screen-textslide');
+    });
+  }
 }
 
 // Tap anywhere → next slide (loop)
