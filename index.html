@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Stehendanschlag – Prototyp</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: #1a1a1a;
+      font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    }
+
+    /* ── Viewport & Scale ── */
+    #viewport {
+      position: fixed; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    #app {
+      position: relative;
+      width: 390px; height: 844px;
+      overflow: hidden;
+      background: #f0f1f2;
+      transform-origin: center center;
+    }
+
+    /* ── Screens ── */
+    .screen {
+      position: absolute; inset: 0;
+      display: none;
+      width: 390px; height: 844px;
+    }
+    .screen.active { display: block; }
+
+    /* Full-frame image (dreh, nav, closeup, textslide) */
+    img.frame {
+      width: 390px; height: 844px;
+      display: block;
+      object-fit: fill;
+      user-select: none;
+      -webkit-user-drag: none;
+      pointer-events: none;
+    }
+
+    /* ── Hit areas ── */
+    .hit-back {
+      position: absolute;
+      top: 84px; left: 12px;
+      width: 52px; height: 46px;
+      cursor: pointer; z-index: 10;
+    }
+    .hit-target {
+      position: absolute;
+      top: 84px; right: 12px;
+      width: 52px; height: 46px;
+      cursor: pointer; z-index: 10;
+    }
+
+    /* ── DREH SCREEN ── */
+    /* Slider drag zone – bottom 190px including the slider bar */
+    #slider-zone {
+      position: absolute;
+      bottom: 0; left: 0;
+      width: 390px; height: 190px;
+      cursor: ew-resize;
+      touch-action: none;
+      z-index: 5;
+    }
+
+    /* Nav / spots overlay layer */
+    #spots-layer {
+      position: absolute; inset: 0;
+      opacity: 0;
+      transition: opacity 0.7s ease;
+      pointer-events: none;
+    }
+    #spots-layer.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* Individual spot hit circles */
+    .spot-hit {
+      position: absolute;
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      cursor: pointer;
+      /* center the 52px hit over the 20px spot dot */
+      transform: translate(-16px, -16px);
+      z-index: 6;
+    }
+
+    /* ── CLOSEUP SCREEN ── */
+    /* Bottom tap zone triggers textslide */
+    #closeup-zone {
+      position: absolute;
+      bottom: 0; left: 0;
+      width: 390px; height: 280px;
+      cursor: pointer; z-index: 5;
+    }
+
+    /* Bounce hint at bottom of closeup */
+    #tap-hint {
+      position: absolute;
+      bottom: 24px; left: 50%;
+      transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center; gap: 5px;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+      pointer-events: none; z-index: 9;
+    }
+    #tap-hint.show { opacity: 1; }
+    #tap-hint svg { animation: hintBounce 1.5s ease-in-out infinite; }
+    #tap-hint span {
+      font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+      color: rgba(26, 92, 170, 0.85);
+    }
+    @keyframes hintBounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-7px); }
+    }
+
+    /* ── TEXT SLIDE SCREEN ── */
+    /* "mehr" button hit area */
+    #mehr-hit {
+      position: absolute;
+      bottom: 36px;
+      left: 50%; transform: translateX(-50%);
+      width: 120px; height: 44px;
+      cursor: pointer; z-index: 7;
+    }
+
+    /* ── DETAIL SCREEN ── */
+    #detail-scroll {
+      position: absolute; inset: 0;
+      overflow-y: auto; overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+    .detail-spacer { height: 130px; flex-shrink: 0; }
+
+    #detail-img-wrap {
+      position: relative;
+      line-height: 0;
+    }
+    #detail-img {
+      width: 390px;
+      display: block;
+      height: auto;
+    }
+
+    /* invisible Zurück zone overlaid at bottom of image */
+    #zurueck-zone {
+      position: absolute;
+      bottom: 0; left: 0;
+      width: 390px; height: 110px;
+      cursor: pointer; z-index: 6;
+    }
+
+    /* Fixed HTML header – covers Figma header in the detail image */
+    #detail-header {
+      position: absolute;
+      top: 0; left: 0;
+      width: 390px; height: 130px;
+      background: rgba(240, 241, 242, 0.97);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 20;
+      display: flex; align-items: flex-end;
+      padding: 0 22px 10px;
+    }
+    #detail-header-row {
+      width: 100%;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .dh-btn {
+      width: 44px; height: 28px;
+      display: flex; align-items: center;
+      cursor: pointer; flex-shrink: 0;
+    }
+    #detail-title {
+      font-size: 16px; font-weight: 500;
+      color: #1a1a2e; letter-spacing: 0.01em;
+      text-align: center; flex: 1;
+    }
+
+    /* ── Flash transition ── */
+    #flash {
+      position: absolute; inset: 0;
+      background: #f0f1f2;
+      opacity: 0; pointer-events: none;
+      z-index: 100;
+      transition: opacity 0.18s ease;
+    }
+    #flash.on { opacity: 0.6; }
+  </style>
+</head>
+<body>
+<div id="viewport">
+<div id="app">
+
+  <!-- ══════════════════════════════════════
+       DREH / NAV SCREEN
+  ══════════════════════════════════════ -->
+  <div class="screen active" id="screen-dreh">
+
+    <!-- Base rotation image -->
+    <img class="frame" id="dreh-img" src="images/dreh-f1.png" alt="" draggable="false">
+
+    <!-- Nav/spots overlay (same position, fades in) -->
+    <div id="spots-layer">
+      <img class="frame" id="nav-img" src="images/nav-f1.png" alt="" draggable="false">
+      <div class="spot-hit" id="sh0"></div>
+      <div class="spot-hit" id="sh1"></div>
+      <div class="spot-hit" id="sh2"></div>
+    </div>
+
+    <!-- Slider drag area (bottom 190px) -->
+    <div id="slider-zone"></div>
+
+    <!-- Target icon (top right) – stays in dreh, resets view -->
+    <div class="hit-target" id="dreh-target"></div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════
+       CLOSEUP SCREEN
+  ══════════════════════════════════════ -->
+  <div class="screen" id="screen-closeup">
+    <img class="frame" id="closeup-img" src="" alt="" draggable="false">
+
+    <!-- Tap bottom to reveal textslides -->
+    <div id="closeup-zone"></div>
+
+    <!-- Animated bounce hint -->
+    <div id="tap-hint">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none"
+           stroke="rgba(26,92,170,0.85)" stroke-width="2.2" stroke-linecap="round">
+        <polyline points="18 15 12 9 6 15"/>
+      </svg>
+      <span>mehr entdecken</span>
+    </div>
+
+    <div class="hit-back"   id="closeup-back"></div>
+    <div class="hit-target" id="closeup-target"></div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════
+       TEXT SLIDE SCREEN
+  ══════════════════════════════════════ -->
+  <div class="screen" id="screen-textslide">
+    <img class="frame" id="textslide-img" src="" alt="" draggable="false">
+
+    <!-- "mehr" button hit area -->
+    <div id="mehr-hit"></div>
+
+    <div class="hit-back"   id="textslide-back"></div>
+    <div class="hit-target" id="textslide-target"></div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════
+       DETAIL SCREEN
+  ══════════════════════════════════════ -->
+  <div class="screen" id="screen-detail">
+
+    <!-- Scrollable content -->
+    <div id="detail-scroll">
+      <div class="detail-spacer"></div>
+      <div id="detail-img-wrap">
+        <img id="detail-img" src="" alt="">
+        <!-- Zurück hit area at bottom of image -->
+        <div id="zurueck-zone"></div>
+      </div>
+    </div>
+
+    <!-- Fixed header overlay (on top of scroll) -->
+    <div id="detail-header">
+      <div id="detail-header-row">
+        <div class="dh-btn" id="detail-back">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+               stroke="#1a5caa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </div>
+
+        <span id="detail-title">Beine und Füsse</span>
+
+        <div class="dh-btn" id="detail-target" style="justify-content:flex-end;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+               stroke="#1a5caa" stroke-width="1.6" stroke-linecap="round">
+            <circle cx="12" cy="12" r="9"/>
+            <line x1="12" y1="0"    x2="12" y2="4"/>
+            <line x1="12" y1="20"   x2="12" y2="24"/>
+            <line x1="0"  y1="12"   x2="4"  y2="12"/>
+            <line x1="20" y1="12"   x2="24" y2="12"/>
+            <circle cx="12" cy="12" r="2.8" fill="#1a5caa" stroke="none"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+
+  <!-- Flash overlay -->
+  <div id="flash"></div>
+
+</div><!-- #app -->
+</div><!-- #viewport -->
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+//  DATA
+// ══════════════════════════════════════════════════════════════════
+
+const TOTAL_FRAMES = 29;
+
+// Nav configs: which dreh frame range → which nav image + spot positions
+// Spot positions are CENTER x/y in 390×844 coordinate space
+const NAV_RANGES = [
+  {
+    min: 1, max: 3,
+    img: 'images/nav-f1.png',
+    spots: [
+      { cx: 116, cy: 252, key: 'f1-3' },  // arm / Arme
+      { cx: 299, cy: 421, key: 'f1-2' },  // hip / Hüfte
+      { cx: 90,  cy: 694, key: 'f1-1' },  // feet / Beine
+    ]
+  },
+  {
+    min: 8, max: 13,
+    img: 'images/nav-f10.png',
+    spots: [
+      { cx: 149, cy: 293, key: 'f10-1' },
+      { cx: 267, cy: 397, key: 'f10-1' },
+      { cx: 256, cy: 693, key: 'f10-1' },
+    ]
+  }
+];
+
+const CLOSEUPS = {
+  'f1-1': {
+    img: 'images/closeup-f1-1.png',
+    title: 'Beine und Füsse',
+    slides: [
+      'images/closeup-f1-1-text1.png',
+      'images/closeup-f1-1-text2.png',
+      'images/closeup-f1-1-text3.png',
+    ],
+    detail: 'f1-1',
+  },
+  'f1-2': {
+    img: 'images/closeup-f1-2.png',
+    title: 'Hüfte',
+    slides: ['images/closeup-f1-2-text1.png'],
+    detail: 'f1-2',
+  },
+  'f1-3': {
+    img: 'images/closeup-f1-3.png',
+    title: 'Arme',
+    slides: [
+      'images/closeup-f1-3-text1.png',
+      'images/closeup-f1-3-text2.png',
+      'images/closeup-f1-3-text3.png',
+    ],
+    detail: 'f1-3',
+  },
+  'f10-1': {
+    img: 'images/closeup-f10-1.png',
+    title: 'Beine und Füsse',
+    slides: [
+      'images/closeup-f10-1-text1.png',
+      'images/closeup-f10-1-text2.png',
+      'images/closeup-f10-1-text3.png',
+    ],
+    detail: 'f1-1',  // only f1-1 detail exists; used as fallback
+  },
+};
+
+const DETAILS = {
+  'f1-1': { img: 'images/detail-f1-1.png',  title: 'Beine und Füsse' },
+  'f1-2': { img: 'images/details-f1-2.png', title: 'Hüfte' },
+  'f1-3': { img: 'images/details-f1-3.png', title: 'Arme' },
+};
+
+// ══════════════════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════════════════
+
+const S = {
+  frame: 1,
+  activeNavRange: null,
+  closeupKey: null,
+  slideIdx: 0,
+  detailKey: null,
+  stopTimer: null,
+  hintTimer: null,
+};
+
+// ══════════════════════════════════════════════════════════════════
+//  SCALING
+// ══════════════════════════════════════════════════════════════════
+
+const appEl = document.getElementById('app');
+
+function applyScale() {
+  const sx = window.innerWidth  / 390;
+  const sy = window.innerHeight / 844;
+  appEl.style.transform = `scale(${Math.min(sx, sy)})`;
+}
+applyScale();
+window.addEventListener('resize', applyScale);
+
+// ══════════════════════════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════════════════════════
+
+const $ = id => document.getElementById(id);
+
+function showOnly(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(id).classList.add('active');
+}
+
+function flash(cb) {
+  const f = $('flash');
+  f.classList.add('on');
+  setTimeout(() => {
+    cb();
+    setTimeout(() => f.classList.remove('on'), 150);
+  }, 80);
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  DREH – frame & slider
+// ══════════════════════════════════════════════════════════════════
+
+function setFrame(n) {
+  // wrap around
+  n = ((n - 1 + TOTAL_FRAMES) % TOTAL_FRAMES) + 1;
+  S.frame = n;
+  $('dreh-img').src = `images/dreh-f${n}.png`;
+}
+
+function clearNav() {
+  $('spots-layer').classList.remove('visible');
+  S.activeNavRange = null;
+}
+
+function revealNav() {
+  let range = null;
+  for (const r of NAV_RANGES) {
+    if (S.frame >= r.min && S.frame <= r.max) { range = r; break; }
+  }
+  if (!range) return;
+
+  S.activeNavRange = range;
+  $('nav-img').src = range.img;
+
+  range.spots.forEach((sp, i) => {
+    const h = $(`sh${i}`);
+    h.style.left = sp.cx + 'px';
+    h.style.top  = sp.cy + 'px';
+    h.dataset.key = sp.key;
+    h.style.display = 'block';
+  });
+
+  $('spots-layer').classList.add('visible');
+}
+
+function scheduleNav() {
+  clearTimeout(S.stopTimer);
+  S.stopTimer = setTimeout(revealNav, 800);
+}
+
+// ── Slider drag ──────────────────────────────────────────────────
+
+let drag = null;
+
+function dragStart(cx) {
+  drag = { startX: cx, startFrame: S.frame };
+  clearTimeout(S.stopTimer);
+  clearNav();
+}
+
+function dragMove(cx) {
+  if (!drag) return;
+  // account for app scaling
+  const scale = appEl.getBoundingClientRect().width / 390;
+  const dx    = (cx - drag.startX) / scale;
+  // sensitivity: ~8 px per frame step
+  const delta = Math.round(dx / 8);
+  let target = drag.startFrame + delta;
+  target = ((target - 1 + TOTAL_FRAMES) % TOTAL_FRAMES) + 1;
+  if (target !== S.frame) setFrame(target);
+}
+
+function dragEnd() {
+  if (!drag) return;
+  drag = null;
+  scheduleNav();
+}
+
+const sliderZone = $('slider-zone');
+sliderZone.addEventListener('touchstart', e => dragStart(e.touches[0].clientX), { passive: true });
+sliderZone.addEventListener('touchmove',  e => dragMove(e.touches[0].clientX),  { passive: true });
+sliderZone.addEventListener('touchend',   dragEnd);
+sliderZone.addEventListener('mousedown',  e => dragStart(e.clientX));
+document.addEventListener('mousemove', e => { if (drag) dragMove(e.clientX); });
+document.addEventListener('mouseup',   e => { if (drag) dragEnd(); });
+
+// ── Spot clicks ──────────────────────────────────────────────────
+
+[0, 1, 2].forEach(i => {
+  $(`sh${i}`).addEventListener('click', () => {
+    const key = $(`sh${i}`).dataset.key;
+    if (key) goCloseup(key);
+  });
+});
+
+// Target icon in dreh: stay in dreh but reset nav
+$('dreh-target').addEventListener('click', goDreh);
+
+// ══════════════════════════════════════════════════════════════════
+//  CLOSEUP
+// ══════════════════════════════════════════════════════════════════
+
+function goCloseup(key) {
+  S.closeupKey = key;
+  const d = CLOSEUPS[key];
+  flash(() => {
+    $('closeup-img').src = d.img;
+    showOnly('screen-closeup');
+    clearNav();
+
+    clearTimeout(S.hintTimer);
+    $('tap-hint').classList.remove('show');
+    S.hintTimer = setTimeout(() => $('tap-hint').classList.add('show'), 1800);
+  });
+}
+
+$('closeup-zone').addEventListener('click', () => goTextslide(S.closeupKey, 0));
+
+$('closeup-back').addEventListener('click', () => {
+  flash(() => {
+    showOnly('screen-dreh');
+    clearNav();
+    scheduleNav();
+  });
+});
+
+$('closeup-target').addEventListener('click', goDreh);
+
+// ══════════════════════════════════════════════════════════════════
+//  TEXT SLIDES
+// ══════════════════════════════════════════════════════════════════
+
+function goTextslide(key, idx) {
+  S.closeupKey = key;
+  const d = CLOSEUPS[key];
+  S.slideIdx = ((idx % d.slides.length) + d.slides.length) % d.slides.length;
+  flash(() => {
+    $('textslide-img').src = d.slides[S.slideIdx];
+    showOnly('screen-textslide');
+  });
+}
+
+// Tap anywhere → next slide (loop)
+$('screen-textslide').addEventListener('click', e => {
+  if (e.target.closest('#mehr-hit, #textslide-back, #textslide-target')) return;
+  goTextslide(S.closeupKey, S.slideIdx + 1);
+});
+
+$('mehr-hit').addEventListener('click', e => {
+  e.stopPropagation();
+  goDetail(CLOSEUPS[S.closeupKey].detail);
+});
+
+$('textslide-back').addEventListener('click', e => {
+  e.stopPropagation();
+  flash(() => goCloseup(S.closeupKey));
+});
+
+$('textslide-target').addEventListener('click', e => {
+  e.stopPropagation();
+  goDreh();
+});
+
+// ══════════════════════════════════════════════════════════════════
+//  DETAIL
+// ══════════════════════════════════════════════════════════════════
+
+// Figma header in detail images is ~120px tall. We start the scroll
+// at 120 so the HTML header covers the image's own header.
+const DETAIL_IMG_HEADER_PX = 120;
+
+function goDetail(key) {
+  S.detailKey = key;
+  const d = DETAILS[key];
+  flash(() => {
+    const img = $('detail-img');
+    img.src = d.img;
+    $('detail-title').textContent = d.title;
+    $('detail-scroll').scrollTop = 0;
+    showOnly('screen-detail');
+
+    // After image loads, start scroll so the Figma header (≈120px)
+    // in the image slides behind the HTML fixed header.
+    const applyScroll = () => {
+      $('detail-scroll').scrollTop = DETAIL_IMG_HEADER_PX;
+    };
+    // Try immediately (cached image), then fallback via onload
+    img.onload = applyScroll;
+    // Use 200ms fallback to handle both cached and freshly-loaded images
+    setTimeout(applyScroll, 200);
+  });
+}
+
+$('detail-back').addEventListener('click', () => {
+  flash(() => goTextslide(S.closeupKey, S.slideIdx));
+});
+
+$('detail-target').addEventListener('click', goDreh);
+$('zurueck-zone').addEventListener('click', goDreh);
+
+// ══════════════════════════════════════════════════════════════════
+//  GO TO DREH (home)
+// ══════════════════════════════════════════════════════════════════
+
+function goDreh() {
+  flash(() => {
+    clearTimeout(S.stopTimer);
+    clearNav();
+    showOnly('screen-dreh');
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  PRELOAD ALL DREH FRAMES
+// ══════════════════════════════════════════════════════════════════
+
+(function preload() {
+  for (let i = 1; i <= TOTAL_FRAMES; i++) {
+    const img = new Image();
+    img.src = `images/dreh-f${i}.png`;
+  }
+  // Preload nav images
+  new Image().src = 'images/nav-f1.png';
+  new Image().src = 'images/nav-f10.png';
+})();
+
+// Expose internals for debugging
+window._app = { S, setFrame, revealNav, clearNav, goCloseup, goTextslide, goDetail, goDreh, scheduleNav };
+</script>
+</body>
+</html>
