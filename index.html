@@ -114,7 +114,7 @@
     .slider-thumb {
       position: absolute;
       top: 50%;
-      left: 50%;                       /* initial: center = frame 1 */
+      left: 0%;                        /* initial: left = frame 1 */
       transform: translate(-50%, -50%);
       width: 14px; height: 14px;
       background: #2c2c2c;
@@ -543,8 +543,8 @@ function showFrame(n) {
   if (n === currentFrame) return;
   currentFrame = n;
   rotImg.src = `images/dreh-f${n}.png`;
-  // Thumb: starts at 50% (frame 1 = center), reaches 100% at frame 29
-  thumb.style.left = (50 + (n - 1) / (TOTAL - 1) * 50) + '%';
+  // Thumb: 0% at frame 1, 100% at frame 29
+  thumb.style.left = ((n - 1) / (TOTAL - 1) * 100) + '%';
 }
 
 // ═══════════════════════════════════════════════════════════
