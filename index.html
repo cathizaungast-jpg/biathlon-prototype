@@ -202,8 +202,8 @@
       transform: translateX(-50%);
       pointer-events: none;
       z-index: 4;
-      top: 732px;
-      left: 125px;
+      top: 745px;
+      left: 195px;
       transition: left 0.08s linear;
     }
 
@@ -467,8 +467,8 @@ function setFrame(n) {
   n = ((n - 1 + TOTAL_FRAMES) % TOTAL_FRAMES) + 1;
   S.frame = n;
   $('dreh-img').src = `images/dreh-f${n}.png`;
-  // Move slider dot: track runs from x=125 to x=265
-  const x = 125 + (n - 1) / (TOTAL_FRAMES - 1) * 140;
+  // Dot starts at pill center (x=195) and moves right to x=265 at frame 29
+  const x = 195 + (n - 1) / (TOTAL_FRAMES - 1) * 70;
   $('slider-dot').style.left = x + 'px';
 }
 
@@ -522,7 +522,7 @@ function dragMove(cx) {
   // sensitivity: ~8 px per frame step
   const delta = Math.round(dx / 8);
   let target = drag.startFrame + delta;
-  target = ((target - 1 + TOTAL_FRAMES) % TOTAL_FRAMES) + 1;
+  target = Math.max(1, Math.min(TOTAL_FRAMES, target));  // stop at ends, no wrap
   if (target !== S.frame) setFrame(target);
 }
 
