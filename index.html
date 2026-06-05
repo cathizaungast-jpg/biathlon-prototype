@@ -270,11 +270,12 @@
     .detail-img-wrap { position: relative; width: 100%; }
     .detail-img-wrap > img { width: 100%; height: auto; display: block; }
 
+    /* Figma: "Zurück" sits ≈126px from image bottom → bottom:100px covers it */
     .zurück-tap {
       position: absolute;
-      bottom: 26px; left: 50%;
+      bottom: 100px; left: 50%;
       transform: translateX(-50%);
-      width: 150px; height: 66px;
+      width: 200px; height: 70px;
       cursor: pointer; z-index: 2;
     }
 
@@ -646,6 +647,8 @@ function stopPeek(closeupId) {
 
 function showTextSlide(closeupId, idx) {
   stopPeek(closeupId);
+  // Hide HTML overlay — Figma text slides have their own gradient/blur at top
+  document.getElementById('overlayHead').classList.remove('visible');
   const incoming = textEl(closeupId, idx);
   if (!incoming) return;
 
@@ -692,6 +695,8 @@ function resetTextSlides(closeupId) {
     if (el) { el.classList.remove('visible', 'peeking'); el.style.transform = ''; }
   }
   activeTextIdx = -1;
+  // Back to closeup-only: restore HTML overlay head with back arrow
+  document.getElementById('overlayHead').classList.add('visible');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -702,9 +707,10 @@ function openDetail(detailId) {
   if (!layer) return;
   activeDetailId = detailId;
   layer.classList.add('visible');
-  // Skip Figma header (≈120px) in the image
+  // scrollTop = 0: HTML overlay (120px) covers the Figma header zone in the image.
+  // Content starting at y≈120 of the image is visible right below the overlay.
   const scroll = document.getElementById(`dscroll-${detailId}`);
-  if (scroll) { scroll.scrollTop = 0; setTimeout(() => { scroll.scrollTop = 120; }, 60); }
+  if (scroll) scroll.scrollTop = 0;
 }
 
 function dismissDetail() {
