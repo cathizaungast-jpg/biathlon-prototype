@@ -8,7 +8,7 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background: #1a1a1a;
+      background: #f6f6f6;
       overflow: hidden;
       width: 100vw;
       height: 100vh;
@@ -21,6 +21,7 @@
       width: 390px; height: 844px;
       overflow: hidden;
       background: #f6f6f6;
+      /* default: centered (desktop). overridden by fitPhone() */
       top: 50%; left: 50%;
       transform: translate(-50%, -50%);
       transform-origin: center center;
@@ -194,13 +195,13 @@
       animation: none;
     }
 
-    /* "mehr" tap zone */
+    /* "mehr" tap zone — Figma: "mehr" text at y≈728-748, center y≈738 */
     .mehr-btn {
       position: absolute;
-      bottom: 8px;
+      top: 712px;
       left: 50%;
       transform: translateX(-50%);
-      width: 150px; height: 64px;
+      width: 160px; height: 56px;
       z-index: 3;
       cursor: pointer;
     }
@@ -269,6 +270,42 @@
       transform: translateX(-50%);
       width: 150px; height: 66px;
       cursor: pointer; z-index: 2;
+    }
+
+    /* ── Overlay head (closeup + text slide states) ─────────── */
+    /* Covers the semi-transparent "Blur oben" in the Figma closeup images
+       so the dreh hamburger can't bleed through. Shows back arrow instead. */
+    .overlay-head {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 130px;
+      background: rgba(246,246,246,0.97);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: 36;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.22s ease;
+    }
+    .overlay-head.visible { opacity: 1; }
+    .overlay-head-inner {
+      position: absolute;
+      top: 88px; left: 12px; right: 12px;
+      height: 44px;
+      display: flex; align-items: center;
+    }
+    .overlay-head-icon {
+      width: 44px; height: 44px;
+      display: flex; align-items: center;
+      flex-shrink: 0;
+    }
+    .overlay-head-icon.right { justify-content: flex-end; }
+    .overlay-head-title {
+      flex: 1;
+      text-align: center;
+      font-family: 'Neue Haas Unica W1G', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-weight: 500; font-size: 16px;
+      color: #2c2c2c;
     }
 
     /* ── Invisible header tap zones (always on top) ──────────── */
@@ -492,6 +529,19 @@
     </div>
   </div>
 
+  <!-- ── Overlay head: back arrow + title + target (closeup/text state) ── -->
+  <div class="overlay-head" id="overlayHead">
+    <div class="overlay-head-inner">
+      <div class="overlay-head-icon">
+        <svg width="20" height="14" fill="none"><use href="#ico-back"/></svg>
+      </div>
+      <span class="overlay-head-title" id="overlayTitle"></span>
+      <div class="overlay-head-icon right">
+        <svg width="24" height="24" fill="none"><use href="#ico-target"/></svg>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Invisible header tap zones (always z-50) ─────────── -->
   <div class="header-btn" id="btnMenu"></div>
   <div class="header-btn" id="btnTarget"></div>
@@ -509,12 +559,20 @@ const PEEK_DELAY = 700;   // ms after closeup open before peek starts
 // Closeup → how many text slides
 const TEXT_COUNTS = { 'f1-1': 3, 'f1-2': 1, 'f1-3': 3, 'f10-1': 3 };
 
-// Which frame range → which spots layer id
+// Only the two nav frames designed in Figma (nav-f1_S and nav-f10_S)
 function navLayerForFrame(n) {
-  if (n >= 1  && n <= 3)  return 'spots-f1';
-  if (n >= 8  && n <= 13) return 'spots-f10';
+  if (n === 1)  return 'spots-f1';
+  if (n === 10) return 'spots-f10';
   return null;
 }
+
+// Titles for the overlay head (from Figma Head_S text)
+const CLOSEUP_TITLES = {
+  'f1-1':  'Beine und Füsse',
+  'f1-2':  'Hüfte',
+  'f1-3':  'Arme',
+  'f10-1': 'Beine und Füsse',
+};
 
 // ═══════════════════════════════════════════════════════════
 //  STATE
@@ -660,18 +718,22 @@ function openCloseup(id) {
   activeCloseupId = id;
   activeTextIdx   = -1;
   document.getElementById(`closeup-${id}`)?.classList.add('visible');
+  // Show overlay head with back arrow + title
+  document.getElementById('overlayTitle').textContent = CLOSEUP_TITLES[id] || '';
+  document.getElementById('overlayHead').classList.add('visible');
   startPeek(id);
 }
 
 function dismissAllCloseups() {
   document.querySelectorAll('.text-layer').forEach(t => {
     t.classList.remove('visible', 'peeking');
-    t.style.transform = '';
+    t.style.cssText = '';
   });
   clearTimeout(peekTimer);
   activeTextIdx   = -1;
   activeCloseupId = null;
   document.querySelectorAll('.closeup-layer').forEach(l => l.classList.remove('visible'));
+  document.getElementById('overlayHead').classList.remove('visible');
   scheduleSpots();
 }
 
@@ -833,10 +895,23 @@ document.querySelectorAll('.zurück-tap').forEach(tap => {
 
 // ═══════════════════════════════════════════════════════════
 //  FIT PHONE TO VIEWPORT
+//  Mobile (≤500px wide): scale by width, pin to top-left → no black bars
+//  Desktop: fit inside viewport, never exceed 1× scale
 // ═══════════════════════════════════════════════════════════
 function fitPhone() {
-  const s = Math.min(window.innerWidth / 390, window.innerHeight / 844);
-  phone.style.transform = `translate(-50%, -50%) scale(${s})`;
+  if (window.innerWidth <= 500) {
+    const s = window.innerWidth / 390;
+    phone.style.top            = '0';
+    phone.style.left           = '0';
+    phone.style.transformOrigin = 'top left';
+    phone.style.transform      = `scale(${s})`;
+  } else {
+    const s = Math.min(window.innerWidth / 390, window.innerHeight / 844, 1);
+    phone.style.top            = '50%';
+    phone.style.left           = '50%';
+    phone.style.transformOrigin = 'center center';
+    phone.style.transform      = `translate(-50%, -50%) scale(${s})`;
+  }
 }
 fitPhone();
 window.addEventListener('resize', fitPhone);
