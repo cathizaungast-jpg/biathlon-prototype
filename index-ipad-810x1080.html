@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <!-- PWA: "Zum Home-Bildschirm" → startet ohne Safari-Chrome, echtes Vollbild -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Stehendanschlag">
+  <link rel="manifest" href="manifest.json">
+  <title>Stehendanschlag – iPad (810×1080)</title>
+
+  <!--
+    iPad 7. Generation — 810×1080 pt (Portrait)
+    Figur-Bilder: skaliert auf Höhe 1080px (Faktor 1.28×), zentriert (je 155px Rand links/rechts)
+    UI-Elemente: gleiche Pixelgröße wie Mobile (Header, Slider, Icons, Spots)
+  -->
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #f6f6f6;
+      overflow: hidden;
+      overscroll-behavior: none;
+      width: 100vw;
+      height: 100vh;
+      height: 100svh;
+    }
+
+    /* ── iPad canvas: 810×1080 ───────────────────────────────── */
+    .phone {
+      position: absolute;
+      width: 810px; height: 1080px;
+      overflow: hidden;
+      background: #f6f6f6;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      transform-origin: center center;
+    }
+
+    /* ── Rotation image ──────────────────────────────────────────
+       Figur skaliert auf volle Höhe (1080px), Seitenverhältnis 390:844
+       → Breite: 390 × (1080÷844) ≈ 499px, horizontal zentriert.
+       Hintergrund (#f6f6f6) füllt die seitlichen Ränder (je ~155px).
+    ─────────────────────────────────────────────────────────────── */
+    #rot-img {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      height: 1080px;
+      width: auto;
+      display: block;
+      pointer-events: none;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+
+    /* ── Spots layer ─────────────────────────────────────────── */
+    .spots-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 15;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+    .spots-layer.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* Spot circles — gleiche Größe wie Mobile (44×44) */
+    .spot {
+      position: absolute;
+      width: 44px; height: 44px;
+      transform: translate(-50%, -50%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .spot-svg {
+      width: 28px; height: 28px;
+      pointer-events: none;
+      overflow: visible;
+    }
+    .spots-layer.visible .spot-svg {
+      animation: spotPulse 2.2s ease-in-out infinite;
+    }
+    @keyframes spotPulse {
+      0%,100% { filter: drop-shadow(0 0 3px rgba(26,103,182,0.35)); }
+      50%      { filter: drop-shadow(0 0 9px rgba(26,103,182,0.6));  }
+    }
+
+    /* ── HTML Slider ─────────────────────────────────────────────
+       Gleiche Höhe wie Mobile (44px), aber über die volle Breite des
+       Canvas (minus symmetrische Ränder). Vertikal an der gleichen
+       relativen Position wie auf Mobile (y=730 → 730×1.28=934).
+    ─────────────────────────────────────────────────────────────── */
+    .slider-bar {
+      position: absolute;
+      top: 934px;
+      left: 45px; right: 45px;   /* Volle Canvas-Breite mit Rand */
+      height: 44px;
+      border-radius: 15px;
+      background: rgba(237,237,237,0.97);
+      border: 1px solid #b4b9c1;
+      box-shadow: 0 0 2px rgba(0,0,0,0.25);
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      touch-action: none;
+      user-select: none;
+      z-index: 20;
+      cursor: grab;
+    }
+    .slider-bar:active { cursor: grabbing; }
+    .arrow-btn {
+      width: 32px; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; cursor: pointer;
+    }
+    .arrow-icon { width: 20px; height: 14px; }
+    .slider-track {
+      flex: 1;
+      position: relative;
+      height: 100%;
+      display: flex; align-items: center;
+    }
+    .slider-thumb {
+      position: absolute;
+      top: 50%; left: 0%;
+      transform: translate(-50%, -50%);
+      width: 14px; height: 14px;
+      background: #2c2c2c;
+      border-radius: 50%;
+      pointer-events: none;
+      transition: left 0.05s linear;
+    }
+
+    /* ── Closeup layers — slide in from right ────────────────── */
+    .closeup-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 30;
+      transform: translateX(100%);
+      transition: transform 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      pointer-events: none;
+    }
+    .closeup-layer.visible {
+      transform: translateX(0);
+      pointer-events: auto;
+    }
+    /* Closeup-Bilder: gleiche Skalierung wie Figur (Höhe 1080px, zentriert) */
+    .closeup-layer > img {
+      position: absolute;
+      top: 0; left: 50%;
+      transform: translateX(-50%);
+      height: 1080px;
+      width: auto;
+      display: block;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    /* ── Text slide layers — slide up from bottom ────────────── */
+    .text-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 35;
+      transform: translateY(100%);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease, transform 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+    .text-layer > img {
+      position: absolute;
+      top: 0; left: 50%;
+      transform: translateX(-50%);
+      height: 1080px;
+      width: auto;
+      display: block;
+      pointer-events: none;
+      user-select: none;
+    }
+    .text-layer.peeking {
+      opacity: 1;
+      transform: translateY(calc(100% - 28px));
+      animation: textPeek 2s ease-in-out infinite;
+      transition: none;
+      pointer-events: auto;
+    }
+    .text-layer.peeking::before {
+      content: '';
+      position: absolute;
+      top: 10px; left: 50%;
+      transform: translateX(-50%);
+      width: 44px; height: 5px;
+      background: #2A6192;
+      border-radius: 3px;
+      opacity: 0.85;
+      z-index: 2;
+    }
+    @keyframes textPeek {
+      0%,100% { transform: translateY(calc(100% - 28px)); }
+      50%      { transform: translateY(calc(100% - 68px)); }
+    }
+    .text-layer.visible {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+      animation: none;
+    }
+
+    /* ── "mehr" tap zone ─────────────────────────────────────────
+       "mehr"-Text in Figma bei y≈728 (390×844-Koord.) → iPad: 728×1.28=932.
+       Horizontal: zentriert in der 499px breiten Bildfläche → = Mitte Canvas.
+    ─────────────────────────────────────────────────────────────── */
+    .mehr-btn {
+      position: absolute;
+      top: 910px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 200px; height: 56px;
+      z-index: 3;
+      cursor: pointer;
+    }
+
+    /* ── Detail layers — slide in from right ─────────────────── */
+    .detail-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 40;
+      transform: translateX(100%);
+      transition: transform 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      pointer-events: none;
+      background: #f6f6f6;
+    }
+    .detail-layer.visible {
+      transform: translateX(0);
+      pointer-events: auto;
+    }
+
+    /* Detail head — gleiche Höhe wie Mobile (120px) */
+    .detail-head {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 120px;
+      background: rgba(246,246,246,0.88);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      z-index: 5;
+      pointer-events: none;
+    }
+    .detail-head-inner {
+      position: absolute;
+      top: 79px; left: 12px; right: 12px;
+      height: 44px;
+      display: flex; align-items: center;
+    }
+    .detail-head-back {
+      width: 44px; height: 44px;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: flex-start;
+    }
+    .detail-head-title {
+      flex: 1;
+      font-family: 'Neue Haas Unica W1G', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-weight: 500; font-size: 16px; line-height: 1;
+      color: #2c2c2c; text-align: center;
+    }
+    .detail-head-target {
+      width: 44px; height: 44px;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: flex-end;
+    }
+
+    /* Detail scroll — Bilder auf volle Canvas-Breite (810px) */
+    .detail-scroll {
+      width: 100%; height: 100%;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
+    .detail-img-wrap { position: relative; width: 100%; }
+    .detail-img-wrap > img { width: 100%; height: auto; display: block; }
+
+    /* Zurück-Tap: Figma "Zurück" ~126px vom unteren Bildrand (390px-Koord.)
+       → bei 810px Breite (Faktor 2.08×): ~262px vom unteren Rand */
+    .zurück-tap {
+      position: absolute;
+      bottom: 230px; left: 50%;
+      transform: translateX(-50%);
+      width: 350px; height: 80px;
+      cursor: pointer; z-index: 2;
+    }
+
+    /* ── Overlay head (closeup + text slide states) ──────────── */
+    .overlay-head {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 130px;
+      background: rgba(246,246,246,0.97);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: 36;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.22s ease;
+    }
+    .overlay-head.visible { opacity: 1; }
+    .overlay-head-inner {
+      position: absolute;
+      top: 88px; left: 12px; right: 12px;
+      height: 44px;
+      display: flex; align-items: center;
+    }
+    .overlay-head-icon {
+      width: 44px; height: 44px;
+      display: flex; align-items: center;
+      flex-shrink: 0;
+    }
+    .overlay-head-icon.right { justify-content: flex-end; }
+    .overlay-head-title {
+      flex: 1;
+      text-align: center;
+      font-family: 'Neue Haas Unica W1G', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-weight: 500; font-size: 16px;
+      color: #2c2c2c;
+    }
+
+    /* ── Invisible header tap zones (z-50) ───────────────────── */
+    .header-btn {
+      position: absolute;
+      top: 79px;
+      width: 44px; height: 44px;
+      z-index: 50;
+      cursor: pointer;
+    }
+    #btnMenu   { left: 12px; }
+    #btnTarget { right: 12px; }
+  </style>
+</head>
+<body>
+<div class="phone" id="phone">
+
+  <!-- ── Rotation frame ───────────────────────────────────── -->
+  <img id="rot-img" src="images/dreh-f1.png" alt="" draggable="false">
+
+  <!-- ── Spots f1 (nur Frame 1) ────────────────────────────────
+       Positionen: canvas_x = 155 + mobile_x × 1.28
+                   canvas_y =         mobile_y × 1.28
+  ──────────────────────────────────────────────────────────── -->
+  <div class="spots-layer" id="spots-f1">
+    <!-- Arme: mobile (116,252) → canvas (304,323) -->
+    <div class="spot" data-closeup="f1-3" style="left:304px; top:323px;" title="Arme">
+      <svg class="spot-svg" viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="10" fill="white"/>
+        <circle cx="14" cy="14" r="6"  fill="#1A67B6"/>
+      </svg>
+    </div>
+    <!-- Hüfte: mobile (299,421) → canvas (538,539) -->
+    <div class="spot" data-closeup="f1-2" style="left:538px; top:539px;" title="Hüfte">
+      <svg class="spot-svg" viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="10" fill="white"/>
+        <circle cx="14" cy="14" r="6"  fill="#1A67B6"/>
+      </svg>
+    </div>
+    <!-- Beine: mobile (90,694) → canvas (270,888) -->
+    <div class="spot" data-closeup="f1-1" style="left:270px; top:888px;" title="Beine und Füsse">
+      <svg class="spot-svg" viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="10" fill="white"/>
+        <circle cx="14" cy="14" r="6"  fill="#1A67B6"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ── Spots f10 (nur Frame 10) ──────────────────────────── -->
+  <div class="spots-layer" id="spots-f10">
+    <!-- Beine: mobile (256,693) → canvas (483,887) -->
+    <div class="spot" data-closeup="f10-1" style="left:483px; top:887px;" title="Beine und Füsse">
+      <svg class="spot-svg" viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="10" fill="white"/>
+        <circle cx="14" cy="14" r="6"  fill="#1A67B6"/>
+      </svg>
+    </div>
+    <!-- visuell: (267,397) → (497,508) -->
+    <div class="spot" style="left:497px; top:508px;">
+      <svg class="spot-svg" viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="10" fill="white"/>
+        <circle cx="14" cy="14" r="6"  fill="#1A67B6"/>
+      </svg>
+    </div>
+    <!-- visuell: (149,293) → (346,375) -->
+    <div class="spot" style="left:346px; top:375px;">
+      <svg class="spot-svg" viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="10" fill="white"/>
+        <circle cx="14" cy="14" r="6"  fill="#1A67B6"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ── HTML Slider (top=934, volle Canvas-Breite) ────────── -->
+  <div class="slider-bar" id="sliderBar">
+    <div class="arrow-btn" id="btnLeft">
+      <svg class="arrow-icon" viewBox="0 0 20 14" fill="none">
+        <line x1="19" y1="7" x2="1" y2="7" stroke="#2c2c2c" stroke-width="2" stroke-linecap="round"/>
+        <path d="M8 1L1 7l7 6" stroke="#2c2c2c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+    </div>
+    <div class="slider-track" id="sliderTrack">
+      <div class="slider-thumb" id="sliderThumb"></div>
+    </div>
+    <div class="arrow-btn" id="btnRight">
+      <svg class="arrow-icon" viewBox="0 0 20 14" fill="none">
+        <line x1="1" y1="7" x2="19" y2="7" stroke="#2c2c2c" stroke-width="2" stroke-linecap="round"/>
+        <path d="M12 1L19 7l-7 6" stroke="#2c2c2c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       CLOSEUP LAYERS
+  ══════════════════════════════════════════════════════════ -->
+  <div class="closeup-layer" id="closeup-f1-1"><img src="images/closeup-f1-1.png" alt="Beine und Füsse"></div>
+  <div class="closeup-layer" id="closeup-f1-2"><img src="images/closeup-f1-2.png" alt="Hüfte"></div>
+  <div class="closeup-layer" id="closeup-f1-3"><img src="images/closeup-f1-3.png" alt="Arme"></div>
+  <div class="closeup-layer" id="closeup-f10-1"><img src="images/closeup-f10-1.png" alt="Beine und Füsse – Seite"></div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       TEXT SLIDE LAYERS
+  ══════════════════════════════════════════════════════════ -->
+  <div class="text-layer" id="text-f1-1-0" data-closeup="f1-1" data-idx="0">
+    <img src="images/closeup-f1-1-text1.png" alt="">
+    <div class="mehr-btn" data-detail="f1-1"></div>
+  </div>
+  <div class="text-layer" id="text-f1-1-1" data-closeup="f1-1" data-idx="1">
+    <img src="images/closeup-f1-1-text2.png" alt="">
+    <div class="mehr-btn" data-detail="f1-1"></div>
+  </div>
+  <div class="text-layer" id="text-f1-1-2" data-closeup="f1-1" data-idx="2">
+    <img src="images/closeup-f1-1-text3.png" alt="">
+    <div class="mehr-btn" data-detail="f1-1"></div>
+  </div>
+  <div class="text-layer" id="text-f1-2-0" data-closeup="f1-2" data-idx="0">
+    <img src="images/closeup-f1-2-text1.png" alt="">
+    <div class="mehr-btn" data-detail="f1-2"></div>
+  </div>
+  <div class="text-layer" id="text-f1-3-0" data-closeup="f1-3" data-idx="0">
+    <img src="images/closeup-f1-3-text1.png" alt="">
+    <div class="mehr-btn" data-detail="f1-3"></div>
+  </div>
+  <div class="text-layer" id="text-f1-3-1" data-closeup="f1-3" data-idx="1">
+    <img src="images/closeup-f1-3-text2.png" alt="">
+    <div class="mehr-btn" data-detail="f1-3"></div>
+  </div>
+  <div class="text-layer" id="text-f1-3-2" data-closeup="f1-3" data-idx="2">
+    <img src="images/closeup-f1-3-text3.png" alt="">
+    <div class="mehr-btn" data-detail="f1-3"></div>
+  </div>
+  <div class="text-layer" id="text-f10-1-0" data-closeup="f10-1" data-idx="0">
+    <img src="images/closeup-f10-1-text1.png" alt="">
+    <div class="mehr-btn" data-detail="f1-1"></div>
+  </div>
+  <div class="text-layer" id="text-f10-1-1" data-closeup="f10-1" data-idx="1">
+    <img src="images/closeup-f10-1-text2.png" alt="">
+    <div class="mehr-btn" data-detail="f1-1"></div>
+  </div>
+  <div class="text-layer" id="text-f10-1-2" data-closeup="f10-1" data-idx="2">
+    <img src="images/closeup-f10-1-text3.png" alt="">
+    <div class="mehr-btn" data-detail="f1-1"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       DETAIL LAYERS (Bilder auf volle Breite 810px skaliert)
+  ══════════════════════════════════════════════════════════ -->
+  <svg style="display:none">
+    <symbol id="ico-back" viewBox="0 0 20 14">
+      <line x1="1" y1="7" x2="19" y2="7" stroke="#2A6192" stroke-width="2" stroke-linecap="round"/>
+      <path d="M8 1L1 7l7 6" stroke="#2A6192" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </symbol>
+    <symbol id="ico-target" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="8.8" stroke="#2A6192" stroke-width="2" fill="none"/>
+      <line x1="12" y1="17.6" x2="12" y2="24"  stroke="#2A6192" stroke-width="2"/>
+      <line x1="12" y1="0"    x2="12" y2="6.4"  stroke="#2A6192" stroke-width="2"/>
+      <line x1="0"  y1="12"  x2="6.4"  y2="12"  stroke="#2A6192" stroke-width="2"/>
+      <line x1="17.6" y1="12" x2="24"  y2="12"  stroke="#2A6192" stroke-width="2"/>
+      <circle cx="12" cy="12" r="4" fill="#2A6192"/>
+    </symbol>
+  </svg>
+
+  <div class="detail-layer" id="detail-f1-1">
+    <div class="detail-head">
+      <div class="detail-head-inner">
+        <div class="detail-head-back"><svg width="20" height="14"><use href="#ico-back"/></svg></div>
+        <span class="detail-head-title">Beine und Füsse</span>
+        <div class="detail-head-target"><svg width="24" height="24"><use href="#ico-target"/></svg></div>
+      </div>
+    </div>
+    <div class="detail-scroll" id="dscroll-f1-1">
+      <div class="detail-img-wrap">
+        <img src="images/detail-f1-1.png" alt="Beine und Füsse – Detail">
+        <div class="zurück-tap"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="detail-layer" id="detail-f1-2">
+    <div class="detail-head">
+      <div class="detail-head-inner">
+        <div class="detail-head-back"><svg width="20" height="14"><use href="#ico-back"/></svg></div>
+        <span class="detail-head-title">Hüfte</span>
+        <div class="detail-head-target"><svg width="24" height="24"><use href="#ico-target"/></svg></div>
+      </div>
+    </div>
+    <div class="detail-scroll" id="dscroll-f1-2">
+      <div class="detail-img-wrap">
+        <img src="images/details-f1-2.png" alt="Hüfte – Detail">
+        <div class="zurück-tap"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="detail-layer" id="detail-f1-3">
+    <div class="detail-head">
+      <div class="detail-head-inner">
+        <div class="detail-head-back"><svg width="20" height="14"><use href="#ico-back"/></svg></div>
+        <span class="detail-head-title">Arme</span>
+        <div class="detail-head-target"><svg width="24" height="24"><use href="#ico-target"/></svg></div>
+      </div>
+    </div>
+    <div class="detail-scroll" id="dscroll-f1-3">
+      <div class="detail-img-wrap">
+        <img src="images/details-f1-3.png" alt="Arme – Detail">
+        <div class="zurück-tap"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Overlay head (closeup/text states) ────────────────── -->
+  <div class="overlay-head" id="overlayHead">
+    <div class="overlay-head-inner">
+      <div class="overlay-head-icon">
+        <svg width="20" height="14" fill="none"><use href="#ico-back"/></svg>
+      </div>
+      <span class="overlay-head-title" id="overlayTitle"></span>
+      <div class="overlay-head-icon right">
+        <svg width="24" height="24" fill="none"><use href="#ico-target"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Invisible header tap zones (z-50) ─────────────────── -->
+  <div class="header-btn" id="btnMenu"></div>
+  <div class="header-btn" id="btnTarget"></div>
+
+</div><!-- /.phone -->
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  CONFIG  (identisch mit Mobile-Version)
+// ═══════════════════════════════════════════════════════════
+const TOTAL      = 29;
+const SPOT_DELAY = 400;
+const PEEK_DELAY = 700;
+
+const TEXT_COUNTS = { 'f1-1': 3, 'f1-2': 1, 'f1-3': 3, 'f10-1': 3 };
+
+function navLayerForFrame(n) {
+  if (n === 1)  return 'spots-f1';
+  if (n === 10) return 'spots-f10';
+  return null;
+}
+
+const CLOSEUP_TITLES = {
+  'f1-1':  'Beine und Füsse',
+  'f1-2':  'Hüfte',
+  'f1-3':  'Arme',
+  'f10-1': 'Beine und Füsse',
+};
+
+// ═══════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════
+const phone       = document.getElementById('phone');
+const rotImg      = document.getElementById('rot-img');
+const sliderBar   = document.getElementById('sliderBar');
+const sliderTrack = document.getElementById('sliderTrack');
+const thumb       = document.getElementById('sliderThumb');
+
+let currentFrame    = 1;
+let dragging        = false;
+let dragStartX      = 0;
+let dragStartFrame  = 1;
+let spotTimer       = null;
+let peekTimer       = null;
+let activeCloseupId = null;
+let activeTextIdx   = -1;
+let activeDetailId  = null;
+
+// ═══════════════════════════════════════════════════════════
+//  FRAME / SLIDER
+// ═══════════════════════════════════════════════════════════
+function showFrame(n) {
+  n = Math.max(1, Math.min(TOTAL, Math.round(n)));
+  if (n === currentFrame) return;
+  currentFrame = n;
+  rotImg.src = `images/dreh-f${n}.png`;
+  thumb.style.left = ((n - 1) / (TOTAL - 1) * 100) + '%';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SPOTS
+// ═══════════════════════════════════════════════════════════
+function hideSpots() {
+  clearTimeout(spotTimer);
+  document.querySelectorAll('.spots-layer').forEach(l => l.classList.remove('visible'));
+}
+function scheduleSpots() {
+  clearTimeout(spotTimer);
+  const id = navLayerForFrame(currentFrame);
+  if (id) spotTimer = setTimeout(() => document.getElementById(id).classList.add('visible'), SPOT_DELAY);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  TEXT SLIDES
+// ═══════════════════════════════════════════════════════════
+function textEl(closeupId, idx) {
+  return document.getElementById(`text-${closeupId}-${idx}`);
+}
+function startPeek(closeupId) {
+  clearTimeout(peekTimer);
+  if (!TEXT_COUNTS[closeupId]) return;
+  peekTimer = setTimeout(() => {
+    if (activeCloseupId === closeupId && activeTextIdx === -1)
+      textEl(closeupId, 0)?.classList.add('peeking');
+  }, PEEK_DELAY);
+}
+function stopPeek(closeupId) {
+  clearTimeout(peekTimer);
+  textEl(closeupId, 0)?.classList.remove('peeking');
+}
+
+function showTextSlide(closeupId, idx) {
+  stopPeek(closeupId);
+  document.getElementById('overlayHead').classList.remove('visible');
+  const incoming = textEl(closeupId, idx);
+  if (!incoming) return;
+
+  if (activeTextIdx >= 0 && activeTextIdx !== idx) {
+    const outgoing = textEl(closeupId, activeTextIdx);
+    const DUR = '0.16s';
+    if (outgoing) {
+      outgoing.style.cssText = `transition: opacity ${DUR} ease; opacity: 0;`;
+      setTimeout(() => { outgoing.classList.remove('visible', 'peeking'); outgoing.style.cssText = ''; }, 170);
+    }
+    incoming.classList.remove('peeking');
+    incoming.style.cssText = 'transform: translateY(0); opacity: 0; transition: none; pointer-events: none;';
+    void incoming.offsetWidth;
+    incoming.style.cssText = `transform: translateY(0); opacity: 1; transition: opacity ${DUR} ease; pointer-events: auto;`;
+    setTimeout(() => { incoming.classList.add('visible'); incoming.style.cssText = ''; }, 170);
+  } else {
+    if (activeTextIdx >= 0) textEl(closeupId, activeTextIdx)?.classList.remove('visible', 'peeking');
+    incoming.classList.remove('peeking');
+    void incoming.offsetWidth;
+    incoming.classList.add('visible');
+  }
+  activeTextIdx = idx;
+}
+
+function resetTextSlides(closeupId) {
+  clearTimeout(peekTimer);
+  const count = TEXT_COUNTS[closeupId] || 0;
+  for (let i = 0; i < count; i++) {
+    const el = textEl(closeupId, i);
+    if (el) { el.classList.remove('visible', 'peeking'); el.style.transform = ''; }
+  }
+  activeTextIdx = -1;
+  document.getElementById('overlayHead').classList.add('visible');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DETAIL
+// ═══════════════════════════════════════════════════════════
+function openDetail(detailId) {
+  const layer = document.getElementById(`detail-${detailId}`);
+  if (!layer) return;
+  activeDetailId = detailId;
+  layer.classList.add('visible');
+  const scroll = document.getElementById(`dscroll-${detailId}`);
+  if (scroll) scroll.scrollTop = 0;
+}
+function dismissDetail() {
+  if (!activeDetailId) return;
+  const layer  = document.getElementById(`detail-${activeDetailId}`);
+  const scroll = document.getElementById(`dscroll-${activeDetailId}`);
+  if (layer)  layer.classList.remove('visible');
+  if (scroll) setTimeout(() => { scroll.scrollTop = 0; }, 350);
+  activeDetailId = null;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CLOSEUP
+// ═══════════════════════════════════════════════════════════
+function openCloseup(id) {
+  hideSpots();
+  activeCloseupId = id;
+  activeTextIdx   = -1;
+  document.getElementById(`closeup-${id}`)?.classList.add('visible');
+  document.getElementById('overlayTitle').textContent = CLOSEUP_TITLES[id] || '';
+  document.getElementById('overlayHead').classList.add('visible');
+  startPeek(id);
+}
+function dismissAllCloseups() {
+  document.querySelectorAll('.text-layer').forEach(t => {
+    t.classList.remove('visible', 'peeking');
+    t.style.cssText = '';
+  });
+  clearTimeout(peekTimer);
+  activeTextIdx   = -1;
+  activeCloseupId = null;
+  document.querySelectorAll('.closeup-layer').forEach(l => l.classList.remove('visible'));
+  document.getElementById('overlayHead').classList.remove('visible');
+  scheduleSpots();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SLIDER EVENTS
+// ═══════════════════════════════════════════════════════════
+sliderBar.addEventListener('pointerdown', e => {
+  dragging = true; dragStartX = e.clientX; dragStartFrame = currentFrame;
+  sliderBar.setPointerCapture(e.pointerId);
+  hideSpots(); thumb.style.transition = 'none'; e.preventDefault();
+});
+sliderBar.addEventListener('pointermove', e => {
+  if (!dragging) return;
+  const tw = sliderTrack.getBoundingClientRect().width;
+  showFrame(dragStartFrame + (e.clientX - dragStartX) / tw * (TOTAL - 1));
+});
+sliderBar.addEventListener('pointerup',     () => { dragging = false; thumb.style.transition = ''; scheduleSpots(); });
+sliderBar.addEventListener('pointercancel', () => { dragging = false; thumb.style.transition = ''; scheduleSpots(); });
+
+document.getElementById('btnLeft').addEventListener('click',  e => { e.stopPropagation(); hideSpots(); showFrame(currentFrame - 1); scheduleSpots(); });
+document.getElementById('btnRight').addEventListener('click', e => { e.stopPropagation(); hideSpots(); showFrame(currentFrame + 1); scheduleSpots(); });
+
+// ═══════════════════════════════════════════════════════════
+//  SPOT TAPS
+// ═══════════════════════════════════════════════════════════
+document.querySelectorAll('.spot[data-closeup]').forEach(spot => {
+  spot.addEventListener('click', () => openCloseup(spot.dataset.closeup));
+});
+
+// ═══════════════════════════════════════════════════════════
+//  MEHR + HEADER BUTTONS
+// ═══════════════════════════════════════════════════════════
+document.querySelectorAll('.mehr-btn').forEach(btn => {
+  btn.addEventListener('click', e => { e.stopPropagation(); openDetail(btn.dataset.detail); });
+});
+document.getElementById('btnTarget').addEventListener('click', () => { dismissDetail(); dismissAllCloseups(); });
+document.getElementById('btnMenu').addEventListener('click', () => {
+  if (activeDetailId)                               dismissDetail();
+  else if (activeTextIdx >= 0 && activeCloseupId) { resetTextSlides(activeCloseupId); startPeek(activeCloseupId); }
+  else if (activeCloseupId)                         dismissAllCloseups();
+});
+
+// ═══════════════════════════════════════════════════════════
+//  CLOSEUP GESTURES (swipe up → text, pull down → dismiss)
+// ═══════════════════════════════════════════════════════════
+const PULL_ZONE = 80, PULL_THRESHOLD = 90, SWIPE_UP_THR = 30;
+
+document.querySelectorAll('.closeup-layer').forEach(layer => {
+  let startY = 0, gesture = null;
+  layer.addEventListener('pointerdown', e => { startY = e.clientY; gesture = null; layer.setPointerCapture(e.pointerId); });
+  layer.addEventListener('pointermove', e => {
+    const scale = phone.getBoundingClientRect().width / 810;
+    const dy = (e.clientY - startY) / scale;
+    if (gesture === null && Math.abs(dy) > 8) {
+      const relY = (startY - layer.getBoundingClientRect().top) / scale;
+      gesture = (e.pointerType !== 'mouse' && relY <= PULL_ZONE && dy > 0) ? 'pull'
+              : (dy < 0 ? 'swipeup' : 'none');
+      if (gesture === 'pull') layer.classList.add('swiping');
+    }
+    if (gesture === 'pull' && dy > 0)
+      layer.style.transform = `translateX(0) translateY(${dy * scale}px)`;
+  });
+  layer.addEventListener('pointerup', e => {
+    const scale = phone.getBoundingClientRect().width / 810;
+    const dy = (e.clientY - startY) / scale;
+    if (gesture === 'pull') {
+      layer.classList.remove('swiping');
+      if (dy > PULL_THRESHOLD) {
+        layer.style.transition = 'transform 0.32s cubic-bezier(0.25,0.46,0.45,0.94)';
+        layer.style.transform  = `translateY(${1080 * scale}px)`;
+        const cid = layer.id.replace('closeup-', '');
+        setTimeout(() => {
+          layer.classList.remove('visible'); layer.style.transform = ''; layer.style.transition = '';
+          resetTextSlides(cid); activeCloseupId = null; scheduleSpots();
+        }, 340);
+      } else layer.style.transform = '';
+    } else if (gesture === 'swipeup' && dy < -SWIPE_UP_THR) {
+      const cid = layer.id.replace('closeup-', '');
+      if (TEXT_COUNTS[cid] && activeTextIdx === -1) showTextSlide(cid, 0);
+    }
+    gesture = null;
+  });
+  layer.addEventListener('pointercancel', () => {
+    if (gesture === 'pull') { layer.classList.remove('swiping'); layer.style.transform = ''; }
+    gesture = null;
+  });
+});
+
+// ═══════════════════════════════════════════════════════════
+//  TEXT SLIDE TAPS + ZURÜCK
+// ═══════════════════════════════════════════════════════════
+document.querySelectorAll('.text-layer').forEach(layer => {
+  layer.addEventListener('click', e => {
+    if (e.target.closest('.mehr-btn')) return;
+    const cid = layer.dataset.closeup, idx = parseInt(layer.dataset.idx), count = TEXT_COUNTS[cid] || 1;
+    if (layer.classList.contains('peeking')) { showTextSlide(cid, 0); return; }
+    showTextSlide(cid, (idx + 1) % count);
+  });
+});
+document.querySelectorAll('.zurück-tap').forEach(tap => {
+  tap.addEventListener('click', e => { e.stopPropagation(); dismissDetail(); dismissAllCloseups(); });
+});
+
+// ═══════════════════════════════════════════════════════════
+//  PRELOAD
+// ═══════════════════════════════════════════════════════════
+(function preload() {
+  for (let i = 1; i <= TOTAL; i++) new Image().src = `images/dreh-f${i}.png`;
+})();
+
+// ═══════════════════════════════════════════════════════════
+//  FIT TO VIEWPORT
+//  iPad 7: 810×1080 logisch → scale=1 im PWA-Modus.
+//  Auf anderen Auflösungen/Geräten: einpassen ohne zu strecken.
+// ═══════════════════════════════════════════════════════════
+function fitPhone() {
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const s  = Math.min(vw / 810, vh / 1080, 1);
+  phone.style.top            = '50%';
+  phone.style.left           = '50%';
+  phone.style.transformOrigin = 'center center';
+  phone.style.transform      = `translate(-50%, -50%) scale(${s})`;
+}
+fitPhone();
+window.addEventListener('resize', fitPhone);
+
+// ═══════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════
+scheduleSpots();
+</script>
+</body>
+</html>
