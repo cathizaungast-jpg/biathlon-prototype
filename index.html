@@ -162,11 +162,11 @@
       user-select: none;
     }
 
-    /* Peeking: just the top sliver bounces up */
+    /* Peeking: subtle nudge from below */
     .text-layer.peeking {
       opacity: 1;
       transform: translateY(calc(100% - 28px));
-      animation: textPeek 1.4s ease-in-out infinite;
+      animation: textPeek 2s ease-in-out infinite;
       transition: none;
       pointer-events: auto;
     }
@@ -183,10 +183,10 @@
     }
     @keyframes textPeek {
       0%,100% { transform: translateY(calc(100% - 28px)); }
-      50%      { transform: translateY(calc(100% - 68px)); }
+      50%      { transform: translateY(calc(100% - 52px)); }
     }
 
-    /* Fully visible */
+    /* Fully visible (first reveal: slide up) */
     .text-layer.visible {
       opacity: 1;
       transform: translateY(0);
@@ -582,13 +582,41 @@ function stopPeek(closeupId) {
 
 function showTextSlide(closeupId, idx) {
   stopPeek(closeupId);
-  // Hide whatever is currently showing first
-  if (activeTextIdx >= 0) textEl(closeupId, activeTextIdx)?.classList.remove('visible', 'peeking');
-  const el = textEl(closeupId, idx);
-  if (!el) return;
-  el.classList.remove('peeking');
-  void el.offsetWidth;  // force reflow so transition fires from bottom
-  el.classList.add('visible');
+  const incoming = textEl(closeupId, idx);
+  if (!incoming) return;
+
+  if (activeTextIdx >= 0 && activeTextIdx !== idx) {
+    // ── Slide-to-slide: smooth crossfade (no translateY) ──
+    const outgoing = textEl(closeupId, activeTextIdx);
+    const DUR = '0.16s';
+
+    // Fade out current
+    if (outgoing) {
+      outgoing.style.cssText = `transition: opacity ${DUR} ease; opacity: 0;`;
+      setTimeout(() => {
+        outgoing.classList.remove('visible', 'peeking');
+        outgoing.style.cssText = '';
+      }, 170);
+    }
+
+    // Position incoming at y=0 invisible, then fade in
+    incoming.classList.remove('peeking');
+    incoming.style.cssText = 'transform: translateY(0); opacity: 0; transition: none; pointer-events: none;';
+    void incoming.offsetWidth;
+    incoming.style.cssText = `transform: translateY(0); opacity: 1; transition: opacity ${DUR} ease; pointer-events: auto;`;
+    setTimeout(() => {
+      incoming.classList.add('visible');
+      incoming.style.cssText = '';
+    }, 170);
+
+  } else {
+    // ── First reveal from closeup: slide up from bottom ──
+    if (activeTextIdx >= 0) textEl(closeupId, activeTextIdx)?.classList.remove('visible', 'peeking');
+    incoming.classList.remove('peeking');
+    void incoming.offsetWidth;
+    incoming.classList.add('visible');
+  }
+
   activeTextIdx = idx;
 }
 
