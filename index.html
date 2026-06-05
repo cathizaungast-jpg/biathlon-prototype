@@ -3,6 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <!-- PWA: "Zum Home-Bildschirm" → startet ohne Safari-Chrome, echtes Vollbild -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Stehendanschlag">
+  <link rel="manifest" href="manifest.json">
   <title>Stehendanschlag – Prototyp</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -903,20 +908,20 @@ document.querySelectorAll('.zurück-tap').forEach(tap => {
 //  Desktop: fit inside viewport, never exceed 1× scale.
 // ═══════════════════════════════════════════════════════════
 function fitPhone() {
-  const vp = window.visualViewport;
-  const vw = vp ? vp.width  : window.innerWidth;
-  const vh = vp ? vp.height : window.innerHeight;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
 
   if (vw <= 500) {
-    // Scale to fit both width AND visible height
-    const s    = Math.min(vw / 390, vh / 844);
-    const offX = Math.max(0, (vw - 390 * s) / 2);
-    const offY = Math.max(0, (vh - 844 * s) / 2);
-    phone.style.left           = offX + 'px';
-    phone.style.top            = offY + 'px';
+    // Mobile: scale only by width — no height compression.
+    // In Safari-Browser: Adressleiste überlappt leider den unteren Bereich.
+    // Lösung: "Zum Home-Bildschirm" hinzufügen → PWA-Modus, kein Browser-Chrome.
+    const s = vw / 390;
+    phone.style.top            = '0';
+    phone.style.left           = '0';
     phone.style.transformOrigin = 'top left';
     phone.style.transform      = `scale(${s})`;
   } else {
+    // Desktop: fit inside viewport, max 1×
     const s = Math.min(vw / 390, vh / 844, 1);
     phone.style.top            = '50%';
     phone.style.left           = '50%';
@@ -926,8 +931,6 @@ function fitPhone() {
 }
 fitPhone();
 window.addEventListener('resize', fitPhone);
-// Also re-fit when iOS address bar shows/hides
-if (window.visualViewport) window.visualViewport.addEventListener('resize', fitPhone);
 
 // ═══════════════════════════════════════════════════════════
 //  INIT

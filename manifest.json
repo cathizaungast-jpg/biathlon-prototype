@@ -1,0 +1,9 @@
+{
+  "name": "Stehendanschlag",
+  "short_name": "Stehendanschlag",
+  "display": "standalone",
+  "background_color": "#f6f6f6",
+  "theme_color": "#f6f6f6",
+  "start_url": "./",
+  "orientation": "portrait"
+}
