@@ -10,6 +10,7 @@
     body {
       background: #f6f6f6;
       overflow: hidden;
+      overscroll-behavior: none;
       width: 100vw;
       height: 100vh;
       height: 100svh;
@@ -895,18 +896,28 @@ document.querySelectorAll('.zurück-tap').forEach(tap => {
 
 // ═══════════════════════════════════════════════════════════
 //  FIT PHONE TO VIEWPORT
-//  Mobile (≤500px wide): scale by width, pin to top-left → no black bars
-//  Desktop: fit inside viewport, never exceed 1× scale
+//  Uses visualViewport when available (most accurate on iOS Safari —
+//  already excludes notch, address bar, and home indicator).
+//  Mobile (≤500px): scale by BOTH dimensions so slider is never
+//  clipped behind the address bar, then center horizontally.
+//  Desktop: fit inside viewport, never exceed 1× scale.
 // ═══════════════════════════════════════════════════════════
 function fitPhone() {
-  if (window.innerWidth <= 500) {
-    const s = window.innerWidth / 390;
-    phone.style.top            = '0';
-    phone.style.left           = '0';
+  const vp = window.visualViewport;
+  const vw = vp ? vp.width  : window.innerWidth;
+  const vh = vp ? vp.height : window.innerHeight;
+
+  if (vw <= 500) {
+    // Scale to fit both width AND visible height
+    const s    = Math.min(vw / 390, vh / 844);
+    const offX = Math.max(0, (vw - 390 * s) / 2);
+    const offY = Math.max(0, (vh - 844 * s) / 2);
+    phone.style.left           = offX + 'px';
+    phone.style.top            = offY + 'px';
     phone.style.transformOrigin = 'top left';
     phone.style.transform      = `scale(${s})`;
   } else {
-    const s = Math.min(window.innerWidth / 390, window.innerHeight / 844, 1);
+    const s = Math.min(vw / 390, vh / 844, 1);
     phone.style.top            = '50%';
     phone.style.left           = '50%';
     phone.style.transformOrigin = 'center center';
@@ -915,6 +926,8 @@ function fitPhone() {
 }
 fitPhone();
 window.addEventListener('resize', fitPhone);
+// Also re-fit when iOS address bar shows/hides
+if (window.visualViewport) window.visualViewport.addEventListener('resize', fitPhone);
 
 // ═══════════════════════════════════════════════════════════
 //  INIT
