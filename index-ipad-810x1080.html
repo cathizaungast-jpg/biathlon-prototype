@@ -864,7 +864,10 @@ function resetTextSlides(closeupId) {
 // ═══════════════════════════════════════════════════════════
 function openDetail(detailId) {
   const layer = document.getElementById(`detail-${detailId}`);
-  if (!layer) return;
+  if (!layer) {
+    if (activeCloseupId) { resetTextSlides(activeCloseupId); startPeek(activeCloseupId); }
+    return;
+  }
   activeDetailId = detailId;
   layer.classList.add('visible');
   const scroll = document.getElementById(`dscroll-${detailId}`);
@@ -958,6 +961,17 @@ document.querySelectorAll('.spot[data-closeup]').forEach(spot => {
 // ═══════════════════════════════════════════════════════════
 //  MEHR + HEADER BUTTONS
 // ═══════════════════════════════════════════════════════════
+
+// Ensure every text-layer has a mehr-btn tap zone
+document.querySelectorAll('.text-layer').forEach(layer => {
+  if (!layer.querySelector('.mehr-btn')) {
+    const btn = document.createElement('div');
+    btn.className = 'mehr-btn';
+    btn.dataset.detail = layer.dataset.closeup;
+    layer.appendChild(btn);
+  }
+});
+
 document.querySelectorAll('.mehr-btn').forEach(btn => {
   btn.addEventListener('click', e => { e.stopPropagation(); openDetail(btn.dataset.detail); });
 });
