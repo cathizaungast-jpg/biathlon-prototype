@@ -2,8 +2,32 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="refresh" content="0; url=index-ipad-810x1080.html">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Stehendanschlag</title>
+  <style>
+    body {
+      margin: 0;
+      background: #f6f6f6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      color: #2c2c2c;
+    }
+  </style>
 </head>
-<body></body>
+<body>
+<script>
+  (function () {
+    // iPad 7: kürzere Seite = 810 CSS-px — iPads immer ≥ 768px
+    // iPhones: kürzere Seite = 375–430 CSS-px
+    var shortSide = Math.min(screen.width, screen.height);
+    var target = shortSide >= 768
+      ? 'index-ipad-810x1080.html'
+      : 'index-iphone-390x844.html';
+    window.location.replace(target);
+  })();
+</script>
+</body>
 </html>
