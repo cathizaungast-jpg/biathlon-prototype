@@ -3,18 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <!-- PWA: "Zum Home-Bildschirm" → startet ohne Safari-Chrome, echtes Vollbild -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Stehendanschlag">
   <link rel="manifest" href="manifest.json">
-  <title>Stehendanschlag – iPad (810×1080)</title>
-
-  <!--
-    iPad 7. Generation — 810×1080 pt (Portrait)
-    Figur-Bilder: skaliert auf Höhe 1080px (Faktor 1.28×), zentriert (je 155px Rand links/rechts)
-    UI-Elemente: gleiche Pixelgröße wie Mobile (Header, Slider, Icons, Spots)
-  -->
+  <title>Stehendanschlag – iPad</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -27,7 +20,7 @@
       height: 100svh;
     }
 
-    /* ── iPad canvas: 810×1080 ───────────────────────────────── */
+    /* ── iPad 7.Gen Canvas: 810×1080 pt ───────────────────────── */
     .phone {
       position: absolute;
       width: 810px; height: 1080px;
@@ -39,17 +32,14 @@
     }
 
     /* ── Rotation image ──────────────────────────────────────────
-       Figur skaliert auf volle Höhe (1080px), Seitenverhältnis 390:844
-       → Breite: 390 × (1080÷844) ≈ 499px, horizontal zentriert.
-       Hintergrund (#f6f6f6) füllt die seitlichen Ränder (je ~155px).
-    ─────────────────────────────────────────────────────────────── */
+       _S images are exactly 1620×2160 = 810×1080 @2× Retina.
+       object-fit:fill renders them crisp at the full canvas.
+    ──────────────────────────────────────────────────────────── */
     #rot-img {
       position: absolute;
-      top: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      height: 1080px;
-      width: auto;
+      top: 0; left: 0;
+      width: 810px; height: 1080px;
+      object-fit: fill;
       display: block;
       pointer-events: none;
       user-select: none;
@@ -70,7 +60,6 @@
       pointer-events: auto;
     }
 
-    /* Spot circles — gleiche Größe wie Mobile (44×44) */
     .spot {
       position: absolute;
       width: 44px; height: 44px;
@@ -93,15 +82,13 @@
       50%      { filter: drop-shadow(0 0 9px rgba(26,103,182,0.6));  }
     }
 
-    /* ── HTML Slider ─────────────────────────────────────────────
-       Gleiche Höhe wie Mobile (44px), aber über die volle Breite des
-       Canvas (minus symmetrische Ränder). Vertikal an der gleichen
-       relativen Position wie auf Mobile (y=730 → 730×1.28=934).
-    ─────────────────────────────────────────────────────────────── */
+    /* ── Slider ──────────────────────────────────────────────────
+       Center y=987px from nav image pixel analysis → top=965px
+    ──────────────────────────────────────────────────────────── */
     .slider-bar {
       position: absolute;
-      top: 934px;
-      left: 45px; right: 45px;   /* Volle Canvas-Breite mit Rand */
+      top: 965px;
+      left: 45px; right: 45px;
       height: 44px;
       border-radius: 15px;
       background: rgba(237,237,237,0.97);
@@ -114,6 +101,7 @@
       user-select: none;
       z-index: 20;
       cursor: grab;
+      gap: 0;
     }
     .slider-bar:active { cursor: grabbing; }
     .arrow-btn {
@@ -139,7 +127,7 @@
       transition: left 0.05s linear;
     }
 
-    /* ── Closeup layers — slide in from right ────────────────── */
+    /* ── Closeup layers ──────────────────────────────────────── */
     .closeup-layer {
       position: absolute;
       inset: 0;
@@ -152,19 +140,17 @@
       transform: translateX(0);
       pointer-events: auto;
     }
-    /* Closeup-Bilder: gleiche Skalierung wie Figur (Höhe 1080px, zentriert) */
     .closeup-layer > img {
       position: absolute;
-      top: 0; left: 50%;
-      transform: translateX(-50%);
-      height: 1080px;
-      width: auto;
+      top: 0; left: 0;
+      width: 810px; height: 1080px;
+      object-fit: fill;
       display: block;
       pointer-events: none;
       user-select: none;
     }
 
-    /* ── Text slide layers — slide up from bottom ────────────── */
+    /* ── Text slide layers ───────────────────────────────────── */
     .text-layer {
       position: absolute;
       inset: 0;
@@ -176,10 +162,9 @@
     }
     .text-layer > img {
       position: absolute;
-      top: 0; left: 50%;
-      transform: translateX(-50%);
-      height: 1080px;
-      width: auto;
+      top: 0; left: 0;
+      width: 810px; height: 1080px;
+      object-fit: fill;
       display: block;
       pointer-events: none;
       user-select: none;
@@ -213,10 +198,7 @@
       animation: none;
     }
 
-    /* ── "mehr" tap zone ─────────────────────────────────────────
-       "mehr"-Text in Figma bei y≈728 (390×844-Koord.) → iPad: 728×1.28=932.
-       Horizontal: zentriert in der 499px breiten Bildfläche → = Mitte Canvas.
-    ─────────────────────────────────────────────────────────────── */
+    /* ── "mehr" tap zone ─────────────────────────────────────── */
     .mehr-btn {
       position: absolute;
       top: 910px;
@@ -227,7 +209,7 @@
       cursor: pointer;
     }
 
-    /* ── Detail layers — slide in from right ─────────────────── */
+    /* ── Detail layers ───────────────────────────────────────── */
     .detail-layer {
       position: absolute;
       inset: 0;
@@ -242,7 +224,6 @@
       pointer-events: auto;
     }
 
-    /* Detail head — gleiche Höhe wie Mobile (120px) */
     .detail-head {
       position: absolute;
       top: 0; left: 0; right: 0;
@@ -276,7 +257,6 @@
       display: flex; align-items: center; justify-content: flex-end;
     }
 
-    /* Detail scroll — Bilder auf volle Canvas-Breite (810px) */
     .detail-scroll {
       width: 100%; height: 100%;
       overflow-y: auto;
@@ -286,8 +266,6 @@
     .detail-img-wrap { position: relative; width: 100%; }
     .detail-img-wrap > img { width: 100%; height: auto; display: block; }
 
-    /* Zurück-Tap: Figma "Zurück" ~126px vom unteren Bildrand (390px-Koord.)
-       → bei 810px Breite (Faktor 2.08×): ~262px vom unteren Rand */
     .zurück-tap {
       position: absolute;
       bottom: 230px; left: 50%;
@@ -330,7 +308,7 @@
       color: #2c2c2c;
     }
 
-    /* ── Invisible header tap zones (z-50) ───────────────────── */
+    /* ── Header tap zones (z-50, always on top) ─────────────── */
     .header-btn {
       position: absolute;
       top: 79px;
@@ -346,29 +324,28 @@
 <div class="phone" id="phone">
 
   <!-- ── Rotation frame ───────────────────────────────────── -->
-  <img id="rot-img" src="images/dreh-f1.png" alt="" draggable="false">
+  <img id="rot-img" src="images_M/dreh-f1_S.png" alt="" draggable="false">
 
-  <!-- ── Spots f1 (nur Frame 1) ────────────────────────────────
-       Positionen: canvas_x = 155 + mobile_x × 1.28
-                   canvas_y =         mobile_y × 1.28
-  ──────────────────────────────────────────────────────────── -->
+  <!-- ═══════════════════════════════════════════════════════
+       SPOTS — 4 Nav-Frames
+       Positionen: Pixel-Zentrum aus nav_S.png ÷ 2 (CSS-Koordinaten)
+  ═══════════════════════════════════════════════════════════ -->
+
+  <!-- Spots f1 — Frontansicht (Frame 1) -->
   <div class="spots-layer" id="spots-f1">
-    <!-- Arme: mobile (116,252) → canvas (304,323) -->
-    <div class="spot" data-closeup="f1-3" style="left:304px; top:323px;" title="Arme">
+    <div class="spot" data-closeup="f1-3" style="left:297px; top:310px;" title="Arme">
       <svg class="spot-svg" viewBox="0 0 28 28" fill="none">
         <circle cx="14" cy="14" r="10" fill="white"/>
         <circle cx="14" cy="14" r="6"  fill="#1A67B6"/>
       </svg>
     </div>
-    <!-- Hüfte: mobile (299,421) → canvas (538,539) -->
-    <div class="spot" data-closeup="f1-2" style="left:538px; top:539px;" title="Hüfte">
+    <div class="spot" data-closeup="f1-2" style="left:543px; top:544px;" title="Hüfte">
       <svg class="spot-svg" viewBox="0 0 28 28" fill="none">
         <circle cx="14" cy="14" r="10" fill="white"/>
         <circle cx="14" cy="14" r="6"  fill="#1A67B6"/>
       </svg>
     </div>
-    <!-- Beine: mobile (90,694) → canvas (270,888) -->
-    <div class="spot" data-closeup="f1-1" style="left:270px; top:888px;" title="Beine und Füsse">
+    <div class="spot" data-closeup="f1-1" style="left:268px; top:898px;" title="Beine und Füsse">
       <svg class="spot-svg" viewBox="0 0 28 28" fill="none">
         <circle cx="14" cy="14" r="10" fill="white"/>
         <circle cx="14" cy="14" r="6"  fill="#1A67B6"/>
@@ -376,24 +353,21 @@
     </div>
   </div>
 
-  <!-- ── Spots f10 (nur Frame 10) ──────────────────────────── -->
+  <!-- Spots f10 — Seitenansicht (Frame 10) -->
   <div class="spots-layer" id="spots-f10">
-    <!-- Beine: mobile (256,693) → canvas (483,887) -->
-    <div class="spot" data-closeup="f10-1" style="left:483px; top:887px;" title="Beine und Füsse">
+    <div class="spot" data-closeup="f10-3" style="left:398px; top:340px;" title="Oberkörper">
       <svg class="spot-svg" viewBox="0 0 28 28" fill="none">
         <circle cx="14" cy="14" r="10" fill="white"/>
         <circle cx="14" cy="14" r="6"  fill="#1A67B6"/>
       </svg>
     </div>
-    <!-- visuell: (267,397) → (497,508) -->
-    <div class="spot" style="left:497px; top:508px;">
+    <div class="spot" data-closeup="f10-2" style="left:367px; top:479px;" title="Hüfte">
       <svg class="spot-svg" viewBox="0 0 28 28" fill="none">
         <circle cx="14" cy="14" r="10" fill="white"/>
         <circle cx="14" cy="14" r="6"  fill="#1A67B6"/>
       </svg>
     </div>
-    <!-- visuell: (149,293) → (346,375) -->
-    <div class="spot" style="left:346px; top:375px;">
+    <div class="spot" data-closeup="f10-1" style="left:363px; top:721px;" title="Beine und Füsse">
       <svg class="spot-svg" viewBox="0 0 28 28" fill="none">
         <circle cx="14" cy="14" r="10" fill="white"/>
         <circle cx="14" cy="14" r="6"  fill="#1A67B6"/>
@@ -401,7 +375,51 @@
     </div>
   </div>
 
-  <!-- ── HTML Slider (top=934, volle Canvas-Breite) ────────── -->
+  <!-- Spots f19 — ¾-Rückenansicht (Frame 19) -->
+  <div class="spots-layer" id="spots-f19">
+    <div class="spot" data-closeup="f19-1" style="left:499px; top:295px;" title="Oberkörper">
+      <svg class="spot-svg" viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="10" fill="white"/>
+        <circle cx="14" cy="14" r="6"  fill="#1A67B6"/>
+      </svg>
+    </div>
+    <div class="spot" data-closeup="f19-2" style="left:441px; top:446px;" title="Hüfte">
+      <svg class="spot-svg" viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="10" fill="white"/>
+        <circle cx="14" cy="14" r="6"  fill="#1A67B6"/>
+      </svg>
+    </div>
+    <div class="spot" data-closeup="f19-3" style="left:228px; top:723px;" title="Beine und Füsse">
+      <svg class="spot-svg" viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="10" fill="white"/>
+        <circle cx="14" cy="14" r="6"  fill="#1A67B6"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Spots f24 — Pistole Frontansicht (Frame 24) -->
+  <div class="spots-layer" id="spots-f24">
+    <div class="spot" data-closeup="f24-1" style="left:336px; top:171px;" title="Anschlag">
+      <svg class="spot-svg" viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="10" fill="white"/>
+        <circle cx="14" cy="14" r="6"  fill="#1A67B6"/>
+      </svg>
+    </div>
+    <div class="spot" data-closeup="f24-2" style="left:349px; top:367px;" title="Oberkörper">
+      <svg class="spot-svg" viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="10" fill="white"/>
+        <circle cx="14" cy="14" r="6"  fill="#1A67B6"/>
+      </svg>
+    </div>
+    <div class="spot" data-closeup="f24-3" style="left:297px; top:889px;" title="Beine und Füsse">
+      <svg class="spot-svg" viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="10" fill="white"/>
+        <circle cx="14" cy="14" r="6"  fill="#1A67B6"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ── HTML Slider ───────────────────────────────────────── -->
   <div class="slider-bar" id="sliderBar">
     <div class="arrow-btn" id="btnLeft">
       <svg class="arrow-icon" viewBox="0 0 20 14" fill="none">
@@ -420,61 +438,153 @@
     </div>
   </div>
 
-  <!-- ══════════════════════════════════════════════════════════
-       CLOSEUP LAYERS
-  ══════════════════════════════════════════════════════════ -->
-  <div class="closeup-layer" id="closeup-f1-1"><img src="images/closeup-f1-1.png" alt="Beine und Füsse"></div>
-  <div class="closeup-layer" id="closeup-f1-2"><img src="images/closeup-f1-2.png" alt="Hüfte"></div>
-  <div class="closeup-layer" id="closeup-f1-3"><img src="images/closeup-f1-3.png" alt="Arme"></div>
-  <div class="closeup-layer" id="closeup-f10-1"><img src="images/closeup-f10-1.png" alt="Beine und Füsse – Seite"></div>
+  <!-- ═══════════════════════════════════════════════════════
+       CLOSEUP LAYERS — 12 Closeups (4 Ansichten × 3 Spots)
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="closeup-layer" id="closeup-f1-1"><img src="images_M/closeup-f1-1_S.png" alt="Beine und Füsse"></div>
+  <div class="closeup-layer" id="closeup-f1-2"><img src="images_M/closeup-f1-2_S.png" alt="Hüfte"></div>
+  <div class="closeup-layer" id="closeup-f1-3"><img src="images_M/closeup-f1-3_S.png" alt="Arme"></div>
+  <div class="closeup-layer" id="closeup-f10-1"><img src="images_M/closeup-f10-1_S.png" alt="Beine und Füsse – Seite"></div>
+  <div class="closeup-layer" id="closeup-f10-2"><img src="images_M/closeup-f10-2_S.png" alt="Hüfte – Seite"></div>
+  <div class="closeup-layer" id="closeup-f10-3"><img src="images_M/closeup-f10-3_S.png" alt="Oberkörper – Seite"></div>
+  <div class="closeup-layer" id="closeup-f19-1"><img src="images_M/closeup-f19-1_S.png" alt="Oberkörper – Rücken"></div>
+  <div class="closeup-layer" id="closeup-f19-2"><img src="images_M/closeup-f19-2_S.png" alt="Hüfte – Rücken"></div>
+  <div class="closeup-layer" id="closeup-f19-3"><img src="images_M/closeup-f19-3_S.png" alt="Beine – Rücken"></div>
+  <div class="closeup-layer" id="closeup-f24-1"><img src="images_M/closeup-f24-1_S.png" alt="Anschlag – Pistole"></div>
+  <div class="closeup-layer" id="closeup-f24-2"><img src="images_M/closeup-f24-2_S.png" alt="Oberkörper – Pistole"></div>
+  <div class="closeup-layer" id="closeup-f24-3"><img src="images_M/closeup-f24-3_S.png" alt="Beine – Pistole"></div>
 
-  <!-- ══════════════════════════════════════════════════════════
+  <!-- ═══════════════════════════════════════════════════════
        TEXT SLIDE LAYERS
-  ══════════════════════════════════════════════════════════ -->
+       Filename-Mapping: Figma exportiert mehrere Slides unter
+       gleichem Namen → sequentielle -1/-2 Suffixe entstehen.
+  ═══════════════════════════════════════════════════════════ -->
+
+  <!-- f1-1 : 3 Slides -->
   <div class="text-layer" id="text-f1-1-0" data-closeup="f1-1" data-idx="0">
-    <img src="images/closeup-f1-1-text1.png" alt="">
+    <img src="images_M/closeup-f1-1-text1_S.png" alt="">
     <div class="mehr-btn" data-detail="f1-1"></div>
   </div>
   <div class="text-layer" id="text-f1-1-1" data-closeup="f1-1" data-idx="1">
-    <img src="images/closeup-f1-1-text2.png" alt="">
+    <img src="images_M/closeup-f1-1-text2_S.png" alt="">
     <div class="mehr-btn" data-detail="f1-1"></div>
   </div>
   <div class="text-layer" id="text-f1-1-2" data-closeup="f1-1" data-idx="2">
-    <img src="images/closeup-f1-1-text3.png" alt="">
-    <div class="mehr-btn" data-detail="f1-1"></div>
-  </div>
-  <div class="text-layer" id="text-f1-2-0" data-closeup="f1-2" data-idx="0">
-    <img src="images/closeup-f1-2-text1.png" alt="">
-    <div class="mehr-btn" data-detail="f1-2"></div>
-  </div>
-  <div class="text-layer" id="text-f1-3-0" data-closeup="f1-3" data-idx="0">
-    <img src="images/closeup-f1-3-text1.png" alt="">
-    <div class="mehr-btn" data-detail="f1-3"></div>
-  </div>
-  <div class="text-layer" id="text-f1-3-1" data-closeup="f1-3" data-idx="1">
-    <img src="images/closeup-f1-3-text2.png" alt="">
-    <div class="mehr-btn" data-detail="f1-3"></div>
-  </div>
-  <div class="text-layer" id="text-f1-3-2" data-closeup="f1-3" data-idx="2">
-    <img src="images/closeup-f1-3-text3.png" alt="">
-    <div class="mehr-btn" data-detail="f1-3"></div>
-  </div>
-  <div class="text-layer" id="text-f10-1-0" data-closeup="f10-1" data-idx="0">
-    <img src="images/closeup-f10-1-text1.png" alt="">
-    <div class="mehr-btn" data-detail="f1-1"></div>
-  </div>
-  <div class="text-layer" id="text-f10-1-1" data-closeup="f10-1" data-idx="1">
-    <img src="images/closeup-f10-1-text2.png" alt="">
-    <div class="mehr-btn" data-detail="f1-1"></div>
-  </div>
-  <div class="text-layer" id="text-f10-1-2" data-closeup="f10-1" data-idx="2">
-    <img src="images/closeup-f10-1-text3.png" alt="">
+    <img src="images_M/closeup-f1-1-text2_S-1.png" alt="">
     <div class="mehr-btn" data-detail="f1-1"></div>
   </div>
 
-  <!-- ══════════════════════════════════════════════════════════
-       DETAIL LAYERS (Bilder auf volle Breite 810px skaliert)
-  ══════════════════════════════════════════════════════════ -->
+  <!-- f1-2 : 1 Slide -->
+  <div class="text-layer" id="text-f1-2-0" data-closeup="f1-2" data-idx="0">
+    <img src="images_M/closeup-f1-2-text1_S.png" alt="">
+    <div class="mehr-btn" data-detail="f1-2"></div>
+  </div>
+
+  <!-- f1-3 : 3 Slides -->
+  <div class="text-layer" id="text-f1-3-0" data-closeup="f1-3" data-idx="0">
+    <img src="images_M/closeup-f1-3-text1_S.png" alt="">
+    <div class="mehr-btn" data-detail="f1-3"></div>
+  </div>
+  <div class="text-layer" id="text-f1-3-1" data-closeup="f1-3" data-idx="1">
+    <img src="images_M/closeup-f1-3-text2_S.png" alt="">
+    <div class="mehr-btn" data-detail="f1-3"></div>
+  </div>
+  <div class="text-layer" id="text-f1-3-2" data-closeup="f1-3" data-idx="2">
+    <img src="images_M/closeup-f1-3-text3_S.png" alt="">
+    <div class="mehr-btn" data-detail="f1-3"></div>
+  </div>
+
+  <!-- f10-1 : 3 Slides — alle als "text1" in Figma → -1/-2 Suffixe -->
+  <div class="text-layer" id="text-f10-1-0" data-closeup="f10-1" data-idx="0">
+    <img src="images_M/closeup-f10-1-text1_S.png" alt="">
+    <div class="mehr-btn" data-detail="f1-1"></div>
+  </div>
+  <div class="text-layer" id="text-f10-1-1" data-closeup="f10-1" data-idx="1">
+    <img src="images_M/closeup-f10-1-text1_S-1.png" alt="">
+    <div class="mehr-btn" data-detail="f1-1"></div>
+  </div>
+  <div class="text-layer" id="text-f10-1-2" data-closeup="f10-1" data-idx="2">
+    <img src="images_M/closeup-f10-1-text1_S-2.png" alt="">
+    <div class="mehr-btn" data-detail="f1-1"></div>
+  </div>
+
+  <!-- f10-2 : 3 Slides -->
+  <div class="text-layer" id="text-f10-2-0" data-closeup="f10-2" data-idx="0">
+    <img src="images_M/closeup-f10-2-text1_S.png" alt="">
+  </div>
+  <div class="text-layer" id="text-f10-2-1" data-closeup="f10-2" data-idx="1">
+    <img src="images_M/closeup-f10-2-text2_S.png" alt="">
+  </div>
+  <div class="text-layer" id="text-f10-2-2" data-closeup="f10-2" data-idx="2">
+    <img src="images_M/closeup-f10-2-text3_S.png" alt="">
+  </div>
+
+  <!-- f10-3 : 3 Slides — text2 doppelt exportiert → text2_S + text2_S-1 -->
+  <div class="text-layer" id="text-f10-3-0" data-closeup="f10-3" data-idx="0">
+    <img src="images_M/closeup-f10-3-text1_S.png" alt="">
+  </div>
+  <div class="text-layer" id="text-f10-3-1" data-closeup="f10-3" data-idx="1">
+    <img src="images_M/closeup-f10-3-text2_S.png" alt="">
+  </div>
+  <div class="text-layer" id="text-f10-3-2" data-closeup="f10-3" data-idx="2">
+    <img src="images_M/closeup-f10-3-text2_S-1.png" alt="">
+  </div>
+
+  <!-- f19-1 : 3 Slides -->
+  <div class="text-layer" id="text-f19-1-0" data-closeup="f19-1" data-idx="0">
+    <img src="images_M/closeup-f19-1-text1_S.png" alt="">
+  </div>
+  <div class="text-layer" id="text-f19-1-1" data-closeup="f19-1" data-idx="1">
+    <img src="images_M/closeup-f19-1-text2_S.png" alt="">
+  </div>
+  <div class="text-layer" id="text-f19-1-2" data-closeup="f19-1" data-idx="2">
+    <img src="images_M/closeup-f19-1-text3_S.png" alt="">
+  </div>
+
+  <!-- f19-2 : 3 Slides -->
+  <div class="text-layer" id="text-f19-2-0" data-closeup="f19-2" data-idx="0">
+    <img src="images_M/closeup-f19-2-text1_S.png" alt="">
+  </div>
+  <div class="text-layer" id="text-f19-2-1" data-closeup="f19-2" data-idx="1">
+    <img src="images_M/closeup-f19-2-text2_S.png" alt="">
+  </div>
+  <div class="text-layer" id="text-f19-2-2" data-closeup="f19-2" data-idx="2">
+    <img src="images_M/closeup-f19-2-text3_S.png" alt="">
+  </div>
+
+  <!-- f19-3 : 2 Slides -->
+  <div class="text-layer" id="text-f19-3-0" data-closeup="f19-3" data-idx="0">
+    <img src="images_M/closeup-f19-3-text1_S.png" alt="">
+  </div>
+  <div class="text-layer" id="text-f19-3-1" data-closeup="f19-3" data-idx="1">
+    <img src="images_M/closeup-f19-3-text2_S.png" alt="">
+  </div>
+
+  <!-- f24-1 : 3 Slides -->
+  <div class="text-layer" id="text-f24-1-0" data-closeup="f24-1" data-idx="0">
+    <img src="images_M/closeup-f24-1-text1_S.png" alt="">
+  </div>
+  <div class="text-layer" id="text-f24-1-1" data-closeup="f24-1" data-idx="1">
+    <img src="images_M/closeup-f24-1-text2_S.png" alt="">
+  </div>
+  <div class="text-layer" id="text-f24-1-2" data-closeup="f24-1" data-idx="2">
+    <img src="images_M/closeup-f24-1-text3_S.png" alt="">
+  </div>
+
+  <!-- f24-2 : 2 Slides -->
+  <div class="text-layer" id="text-f24-2-0" data-closeup="f24-2" data-idx="0">
+    <img src="images_M/closeup-f24-2-text1_S.png" alt="">
+  </div>
+  <div class="text-layer" id="text-f24-2-1" data-closeup="f24-2" data-idx="1">
+    <img src="images_M/closeup-f24-2-text2_S.png" alt="">
+  </div>
+
+  <!-- f24-3 : keine Text-Slides -->
+
+  <!-- ═══════════════════════════════════════════════════════
+       DETAIL LAYERS (810px breit, scrollbar)
+  ═══════════════════════════════════════════════════════════ -->
+
   <svg style="display:none">
     <symbol id="ico-back" viewBox="0 0 20 14">
       <line x1="1" y1="7" x2="19" y2="7" stroke="#2A6192" stroke-width="2" stroke-linecap="round"/>
@@ -500,7 +610,7 @@
     </div>
     <div class="detail-scroll" id="dscroll-f1-1">
       <div class="detail-img-wrap">
-        <img src="images/detail-f1-1.png" alt="Beine und Füsse – Detail">
+        <img src="images_M/detail-f1-1_S-statisch.png" alt="Beine und Füsse – Detail">
         <div class="zurück-tap"></div>
       </div>
     </div>
@@ -516,7 +626,7 @@
     </div>
     <div class="detail-scroll" id="dscroll-f1-2">
       <div class="detail-img-wrap">
-        <img src="images/details-f1-2.png" alt="Hüfte – Detail">
+        <img src="images_M/details-f1-2_S.png" alt="Hüfte – Detail">
         <div class="zurück-tap"></div>
       </div>
     </div>
@@ -532,13 +642,13 @@
     </div>
     <div class="detail-scroll" id="dscroll-f1-3">
       <div class="detail-img-wrap">
-        <img src="images/details-f1-3.png" alt="Arme – Detail">
+        <img src="images_M/details-f1-3_S.png" alt="Arme – Detail">
         <div class="zurück-tap"></div>
       </div>
     </div>
   </div>
 
-  <!-- ── Overlay head (closeup/text states) ────────────────── -->
+  <!-- ── Overlay head (Back-Arrow + Titel in Closeup-Ansicht) ── -->
   <div class="overlay-head" id="overlayHead">
     <div class="overlay-head-inner">
       <div class="overlay-head-icon">
@@ -551,7 +661,7 @@
     </div>
   </div>
 
-  <!-- ── Invisible header tap zones (z-50) ─────────────────── -->
+  <!-- ── Header Tap-Zones (z-50, immer oben) ───────────────── -->
   <div class="header-btn" id="btnMenu"></div>
   <div class="header-btn" id="btnTarget"></div>
 
@@ -559,17 +669,24 @@
 
 <script>
 // ═══════════════════════════════════════════════════════════
-//  CONFIG  (identisch mit Mobile-Version)
+//  CONFIG
 // ═══════════════════════════════════════════════════════════
 const TOTAL      = 29;
 const SPOT_DELAY = 400;
 const PEEK_DELAY = 700;
 
-const TEXT_COUNTS = { 'f1-1': 3, 'f1-2': 1, 'f1-3': 3, 'f10-1': 3 };
+const TEXT_COUNTS = {
+  'f1-1': 3,  'f1-2': 1,  'f1-3': 3,
+  'f10-1': 3, 'f10-2': 3, 'f10-3': 3,
+  'f19-1': 3, 'f19-2': 3, 'f19-3': 2,
+  'f24-1': 3, 'f24-2': 2, 'f24-3': 0
+};
 
 function navLayerForFrame(n) {
   if (n === 1)  return 'spots-f1';
   if (n === 10) return 'spots-f10';
+  if (n === 19) return 'spots-f19';
+  if (n === 24) return 'spots-f24';
   return null;
 }
 
@@ -578,6 +695,14 @@ const CLOSEUP_TITLES = {
   'f1-2':  'Hüfte',
   'f1-3':  'Arme',
   'f10-1': 'Beine und Füsse',
+  'f10-2': 'Hüfte',
+  'f10-3': 'Oberkörper',
+  'f19-1': 'Oberkörper',
+  'f19-2': 'Hüfte',
+  'f19-3': 'Beine und Füsse',
+  'f24-1': 'Anschlag',
+  'f24-2': 'Oberkörper',
+  'f24-3': 'Beine und Füsse',
 };
 
 // ═══════════════════════════════════════════════════════════
@@ -606,7 +731,7 @@ function showFrame(n) {
   n = Math.max(1, Math.min(TOTAL, Math.round(n)));
   if (n === currentFrame) return;
   currentFrame = n;
-  rotImg.src = `images/dreh-f${n}.png`;
+  rotImg.src = `images_M/dreh-f${n}_S.png`;
   thumb.style.left = ((n - 1) / (TOTAL - 1) * 100) + '%';
 }
 
@@ -629,6 +754,7 @@ function scheduleSpots() {
 function textEl(closeupId, idx) {
   return document.getElementById(`text-${closeupId}-${idx}`);
 }
+
 function startPeek(closeupId) {
   clearTimeout(peekTimer);
   if (!TEXT_COUNTS[closeupId]) return;
@@ -765,7 +891,7 @@ document.getElementById('btnMenu').addEventListener('click', () => {
 });
 
 // ═══════════════════════════════════════════════════════════
-//  CLOSEUP GESTURES (swipe up → text, pull down → dismiss)
+//  CLOSEUP GESTURES — Swipe up → Text, Pull down → Dismiss
 // ═══════════════════════════════════════════════════════════
 const PULL_ZONE = 80, PULL_THRESHOLD = 90, SWIPE_UP_THR = 30;
 
@@ -826,24 +952,24 @@ document.querySelectorAll('.zurück-tap').forEach(tap => {
 });
 
 // ═══════════════════════════════════════════════════════════
-//  PRELOAD
+//  PRELOAD — alle 29 Drehframes vorladen
 // ═══════════════════════════════════════════════════════════
 (function preload() {
-  for (let i = 1; i <= TOTAL; i++) new Image().src = `images/dreh-f${i}.png`;
+  for (let i = 1; i <= TOTAL; i++) new Image().src = `images_M/dreh-f${i}_S.png`;
 })();
 
 // ═══════════════════════════════════════════════════════════
 //  FIT TO VIEWPORT
-//  iPad 7: 810×1080 logisch → scale=1 im PWA-Modus.
-//  Auf anderen Auflösungen/Geräten: einpassen ohne zu strecken.
+//  iPad 7: 810×1080 pt → scale=1 im PWA-Modus.
+//  Auf anderen Grössen: einpassen ohne zu strecken.
 // ═══════════════════════════════════════════════════════════
 function fitPhone() {
   const vw = window.innerWidth, vh = window.innerHeight;
   const s  = Math.min(vw / 810, vh / 1080, 1);
-  phone.style.top            = '50%';
-  phone.style.left           = '50%';
+  phone.style.top             = '50%';
+  phone.style.left            = '50%';
   phone.style.transformOrigin = 'center center';
-  phone.style.transform      = `translate(-50%, -50%) scale(${s})`;
+  phone.style.transform       = `translate(-50%, -50%) scale(${s})`;
 }
 fitPhone();
 window.addEventListener('resize', fitPhone);
