@@ -692,11 +692,15 @@
   <!-- ── Suche-per-Liste screen ───────────────────────────── -->
   <div class="sub-layer" id="suche-layer">
     <img src="images_M/Suche-per-Liste_S.png" alt="Suche per Liste" draggable="false">
+    <div class="menu-tap" data-action="back"   style="left:12px;  top:79px; width:88px; height:55px;"></div>
+    <div class="menu-tap" data-action="target" style="right:12px; top:79px; width:88px; height:55px;"></div>
   </div>
 
   <!-- ── Impressum screen ─────────────────────────────────── -->
   <div class="sub-layer" id="impressum-layer">
     <img src="images_M/Impressum_S.png" alt="Impressum" draggable="false">
+    <div class="menu-tap" data-action="back"   style="left:12px;  top:79px; width:88px; height:55px;"></div>
+    <div class="menu-tap" data-action="target" style="right:12px; top:79px; width:88px; height:55px;"></div>
   </div>
 
   <!-- ── Overlay head (Back-Arrow + Titel in Closeup-Ansicht) ── -->
@@ -1060,8 +1064,8 @@ document.querySelectorAll('.menu-tap').forEach(tap => {
     const action = tap.dataset.action;
     if (action === 'suche')     openSubScreen('suche-layer');
     if (action === 'impressum') openSubScreen('impressum-layer');
-    if (action === 'back')      dismissMenu();
-    if (action === 'target')    { dismissMenu(); dismissAllCloseups(); }
+    if (action === 'back')      { if (activeSubScreen) dismissSubScreen(); else dismissMenu(); }
+    if (action === 'target')    { dismissSubScreen(); dismissMenu(); dismissAllCloseups(); }
   });
 });
 
