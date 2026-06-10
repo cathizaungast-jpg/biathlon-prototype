@@ -83,13 +83,14 @@
     }
 
     /* ── Slider ──────────────────────────────────────────────────
-       Center y=987px from nav image pixel analysis → top=965px
+       PNG slider: y=964..1012, x=90..707 (pixel analysis)
+       HTML extends 2px above and below to fully cover PNG element.
     ──────────────────────────────────────────────────────────── */
     .slider-bar {
       position: absolute;
-      top: 965px;
+      top: 962px;
       left: 45px; right: 45px;
-      height: 44px;
+      height: 52px;
       border-radius: 15px;
       background: rgba(237,237,237,0.97);
       border: 1px solid #b4b9c1;
@@ -199,9 +200,10 @@
     }
 
     /* ── "mehr" tap zone ─────────────────────────────────────── */
+    /* Figma: Mehr frame at y=961, height=27 → center y≈974px    */
     .mehr-btn {
       position: absolute;
-      top: 910px;
+      top: 950px;
       left: 50%;
       transform: translateX(-50%);
       width: 200px; height: 56px;
@@ -266,13 +268,26 @@
     .detail-img-wrap { position: relative; width: 100%; }
     .detail-img-wrap > img { width: 100%; height: auto; display: block; }
 
+    /* Zurück tap zone — exact positions set via inline style per detail */
     .zurück-tap {
       position: absolute;
-      bottom: 230px; left: 50%;
-      transform: translateX(-50%);
-      width: 350px; height: 80px;
       cursor: pointer; z-index: 2;
     }
+
+    /* ── Coming-soon overlay (z-66, above sub-layers) ────────── */
+    .coming-soon-layer {
+      position: absolute; inset: 0; z-index: 66;
+      transform: translateX(100%);
+      transition: transform 0.30s cubic-bezier(0.25,0.46,0.45,0.94);
+      pointer-events: none;
+    }
+    .coming-soon-layer.visible { transform: translateX(0); pointer-events: auto; }
+    .coming-soon-layer > img {
+      position: absolute; top:0; left:0; width:810px; height:1080px;
+      object-fit: fill; display:block; pointer-events:none; user-select:none;
+      -webkit-user-drag: none;
+    }
+    .cs-tap { position: absolute; cursor: pointer; z-index: 2; }
 
     /* ── Overlay head (closeup + text slide states) ──────────── */
     .overlay-head {
@@ -642,7 +657,7 @@
     <div class="detail-scroll" id="dscroll-f1-1">
       <div class="detail-img-wrap">
         <img src="images_M/detail-f1-1_S-statisch.png" alt="Beine und Füsse – Detail">
-        <div class="zurück-tap"></div>
+        <div class="zurück-tap" style="left:335px; top:4787px; width:141px; height:35px;"></div>
       </div>
     </div>
   </div>
@@ -658,7 +673,7 @@
     <div class="detail-scroll" id="dscroll-f1-2">
       <div class="detail-img-wrap">
         <img src="images_M/details-f1-2_S.png" alt="Hüfte – Detail">
-        <div class="zurück-tap"></div>
+        <div class="zurück-tap" style="left:335px; top:2080px; width:141px; height:35px;"></div>
       </div>
     </div>
   </div>
@@ -674,7 +689,7 @@
     <div class="detail-scroll" id="dscroll-f1-3">
       <div class="detail-img-wrap">
         <img src="images_M/details-f1-3_S.png" alt="Arme – Detail">
-        <div class="zurück-tap"></div>
+        <div class="zurück-tap" style="left:334px; top:1825px; width:141px; height:35px;"></div>
       </div>
     </div>
   </div>
@@ -701,6 +716,14 @@
     <img src="images_M/Impressum_S.png" alt="Impressum" draggable="false">
     <div class="menu-tap" data-action="back"   style="left:12px;  top:79px; width:88px; height:55px;"></div>
     <div class="menu-tap" data-action="target" style="right:12px; top:79px; width:88px; height:55px;"></div>
+  </div>
+
+  <!-- ── Coming Soon overlay ──────────────────────────────── -->
+  <!-- Triggered by: menu→Darkmode, or mehr-btn without detail page -->
+  <div class="coming-soon-layer" id="coming-soon-layer">
+    <img src="images_M/coming_soon.png" alt="Inhalt noch in Arbeit" draggable="false">
+    <!-- Zurück button: pixel analysis → CSS x=334, y=949, w=141, h=35 -->
+    <div class="cs-tap" style="left:334px; top:949px; width:141px; height:35px;"></div>
   </div>
 
   <!-- ── Overlay head (Back-Arrow + Titel in Closeup-Ansicht) ── -->
@@ -778,8 +801,9 @@ let peekTimer       = null;
 let activeCloseupId = null;
 let activeTextIdx   = -1;
 let activeDetailId  = null;
-let activeMenu      = false;
-let activeSubScreen = null;
+let activeMenu        = false;
+let activeSubScreen   = null;
+let activeComingSoon  = false;
 
 // ═══════════════════════════════════════════════════════════
 //  FRAME / SLIDER
@@ -869,7 +893,7 @@ function resetTextSlides(closeupId) {
 function openDetail(detailId) {
   const layer = document.getElementById(`detail-${detailId}`);
   if (!layer) {
-    if (activeCloseupId) { resetTextSlides(activeCloseupId); startPeek(activeCloseupId); }
+    openComingSoon();   // no detail page yet → show coming soon
     return;
   }
   activeDetailId = detailId;
@@ -884,6 +908,19 @@ function dismissDetail() {
   if (layer)  layer.classList.remove('visible');
   if (scroll) setTimeout(() => { scroll.scrollTop = 0; }, 350);
   activeDetailId = null;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  COMING SOON
+// ═══════════════════════════════════════════════════════════
+function openComingSoon() {
+  activeComingSoon = true;
+  document.getElementById('coming-soon-layer').classList.add('visible');
+}
+function dismissComingSoon() {
+  if (!activeComingSoon) return;
+  activeComingSoon = false;
+  document.getElementById('coming-soon-layer').classList.remove('visible');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -980,13 +1017,15 @@ document.querySelectorAll('.mehr-btn').forEach(btn => {
   btn.addEventListener('click', e => { e.stopPropagation(); openDetail(btn.dataset.detail); });
 });
 document.getElementById('btnTarget').addEventListener('click', () => {
+  dismissComingSoon();
   dismissSubScreen();
   dismissMenu();
   dismissDetail();
   dismissAllCloseups();
 });
 document.getElementById('btnMenu').addEventListener('click', () => {
-  if (activeSubScreen)                              dismissSubScreen();
+  if (activeComingSoon)                             dismissComingSoon();
+  else if (activeSubScreen)                         dismissSubScreen();
   else if (activeDetailId)                          dismissDetail();
   else if (activeTextIdx >= 0 && activeCloseupId) { resetTextSlides(activeCloseupId); startPeek(activeCloseupId); }
   else if (activeCloseupId)                         dismissAllCloseups();
@@ -1052,7 +1091,7 @@ document.querySelectorAll('.text-layer').forEach(layer => {
   });
 });
 document.querySelectorAll('.zurück-tap').forEach(tap => {
-  tap.addEventListener('click', e => { e.stopPropagation(); dismissDetail(); dismissAllCloseups(); });
+  tap.addEventListener('click', e => { e.stopPropagation(); dismissDetail(); });
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -1063,6 +1102,7 @@ document.querySelectorAll('.menu-tap').forEach(tap => {
     e.stopPropagation();
     const action = tap.dataset.action;
     if (action === 'suche')     openSubScreen('suche-layer');
+    if (action === 'darkmode')  openComingSoon();
     if (action === 'impressum') openSubScreen('impressum-layer');
     if (action === 'back')      { if (activeSubScreen) dismissSubScreen(); else dismissMenu(); }
     if (action === 'target')    { dismissSubScreen(); dismissMenu(); dismissAllCloseups(); }
@@ -1071,6 +1111,11 @@ document.querySelectorAll('.menu-tap').forEach(tap => {
 
 document.querySelectorAll('.sub-layer').forEach(layer => {
   layer.addEventListener('click', () => dismissSubScreen());
+});
+
+// ── Coming Soon tap zone ──────────────────────────────────
+document.querySelectorAll('.cs-tap').forEach(tap => {
+  tap.addEventListener('click', e => { e.stopPropagation(); dismissComingSoon(); });
 });
 
 // ═══════════════════════════════════════════════════════════
