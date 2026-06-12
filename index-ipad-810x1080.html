@@ -264,9 +264,21 @@
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
+      scrollbar-width: none;        /* keine Desktop-Scrollbar → Bild bleibt exakt 810px breit */
     }
+    .detail-scroll::-webkit-scrollbar { display: none; }
     .detail-img-wrap { position: relative; width: 100%; }
     .detail-img-wrap > img { width: 100%; height: auto; display: block; }
+
+    /* Detail opened from search list: lift above menu/sub-layer */
+    .detail-layer.over-menu { z-index: 70; }
+    /* In-detail header taps — only reachable when .over-menu covers
+       the global header buttons (z-50); same behavior as those */
+    .dtap {
+      position: absolute;
+      top: 79px; width: 88px; height: 55px;
+      z-index: 6; cursor: pointer;
+    }
 
     /* Zurück tap zone — exact positions set via inline style per detail */
     .zurück-tap {
@@ -665,6 +677,8 @@
         <div class="detail-head-target"><svg width="24" height="24"><use href="#ico-target"/></svg></div>
       </div>
     </div>
+    <div class="dtap dtap-back"   style="left:12px;"></div>
+    <div class="dtap dtap-target" style="left:710px;"></div>
     <div class="detail-scroll" id="dscroll-f1-1">
       <div class="detail-img-wrap">
         <img src="images_M/detail-f1-1_S-statisch.png" alt="Beine und Füsse – Detail">
@@ -681,6 +695,8 @@
         <div class="detail-head-target"><svg width="24" height="24"><use href="#ico-target"/></svg></div>
       </div>
     </div>
+    <div class="dtap dtap-back"   style="left:12px;"></div>
+    <div class="dtap dtap-target" style="left:710px;"></div>
     <div class="detail-scroll" id="dscroll-f1-2">
       <div class="detail-img-wrap">
         <img src="images_M/details-f1-2_S.png" alt="Hüfte – Detail">
@@ -697,6 +713,8 @@
         <div class="detail-head-target"><svg width="24" height="24"><use href="#ico-target"/></svg></div>
       </div>
     </div>
+    <div class="dtap dtap-back"   style="left:12px;"></div>
+    <div class="dtap dtap-target" style="left:710px;"></div>
     <div class="detail-scroll" id="dscroll-f1-3">
       <div class="detail-img-wrap">
         <img src="images_M/details-f1-3_S.png" alt="Arme – Detail">
@@ -720,6 +738,16 @@
     <img src="images_M/Suche-per-Liste_S.png" alt="Suche per Liste" draggable="false">
     <div class="menu-tap" data-action="back"   style="left:12px;  top:79px; width:88px; height:55px;"></div>
     <div class="menu-tap" data-action="target" style="left:auto; right:12px; top:79px; width:88px; height:55px;"></div>
+    <!-- Suchliste: Tap → Detail-Seite an der passenden Überschrift
+         (scroll = ÜberschriftY − 136 = Header 120px + 16px Luft) -->
+    <div class="menu-tap" data-action="jump" data-jump="f1-1:2462" style="top:309px; height:60px;"></div><!-- Feinjustierungen hinterer Fuss -->
+    <div class="menu-tap" data-action="jump" data-jump="f1-1:746"  style="top:369px; height:60px;"></div><!-- Gesamtsystem Fussstellung -->
+    <div class="menu-tap" data-action="jump" data-jump="f1-2:1252" style="top:429px; height:60px;"></div><!-- Knopflöffel -->
+    <div class="menu-tap" data-action="jump" data-jump="f1-3:8"    style="top:489px; height:60px;"></div><!-- Schaftkappe richtig einsetzen -->
+    <div class="menu-tap" data-action="jump" data-jump="f1-1:3887" style="top:549px; height:60px;"></div><!-- Schuhwerk -->
+    <div class="menu-tap" data-action="jump" data-jump="f1-2:6"    style="top:609px; height:60px;"></div><!-- Variation der Hüfte -->
+    <div class="menu-tap" data-action="jump" data-jump="f1-3:1096" style="top:669px; height:60px;"></div><!-- Verschiedene Schaftkappen -->
+    <div class="menu-tap" data-action="jump" data-jump="f1-1:0"    style="top:729px; height:84px;"></div><!-- Verteilung Gesamtgewicht (2-zeilig) -->
   </div>
 
   <!-- ── Impressum screen ─────────────────────────────────── -->
@@ -902,22 +930,34 @@ function resetTextSlides(closeupId) {
 //  DETAIL
 // ═══════════════════════════════════════════════════════════
 function openDetail(detailId) {
+  openDetailAt(detailId, 0);
+}
+// Opens a detail page scrolled so a given heading sits below the header.
+// When opened while menu/search is visible, the detail is lifted above
+// them (.over-menu) — back then returns to the search list.
+function openDetailAt(detailId, scrollY) {
   const layer = document.getElementById(`detail-${detailId}`);
   if (!layer) {
     openComingSoon();   // no detail page yet → show coming soon
     return;
   }
   activeDetailId = detailId;
+  if (activeMenu || activeSubScreen) layer.classList.add('over-menu');
   layer.classList.add('visible');
   const scroll = document.getElementById(`dscroll-${detailId}`);
-  if (scroll) scroll.scrollTop = 0;
+  if (scroll) scroll.scrollTop = scrollY || 0;
 }
 function dismissDetail() {
   if (!activeDetailId) return;
   const layer  = document.getElementById(`detail-${activeDetailId}`);
   const scroll = document.getElementById(`dscroll-${activeDetailId}`);
   if (layer)  layer.classList.remove('visible');
-  if (scroll) setTimeout(() => { scroll.scrollTop = 0; }, 350);
+  // keep .over-menu during the slide-out so the detail stays above
+  // the search list until the transition finishes
+  setTimeout(() => {
+    if (layer)  layer.classList.remove('over-menu');
+    if (scroll) scroll.scrollTop = 0;
+  }, 350);
   activeDetailId = null;
 }
 
@@ -1117,6 +1157,25 @@ document.querySelectorAll('.menu-tap').forEach(tap => {
     if (action === 'impressum') openSubScreen('impressum-layer');
     if (action === 'back')      { if (activeSubScreen) dismissSubScreen(); else dismissMenu(); }
     if (action === 'target')    { dismissSubScreen(); dismissMenu(); dismissAllCloseups(); }
+    if (action === 'jump')      {
+      const [detailId, scrollY] = tap.dataset.jump.split(':');
+      openDetailAt(detailId, parseInt(scrollY, 10));
+    }
+  });
+});
+
+// In-detail header taps (active when detail covers menu/search, z-70)
+document.querySelectorAll('.dtap-back').forEach(tap => {
+  tap.addEventListener('click', e => { e.stopPropagation(); dismissDetail(); });
+});
+document.querySelectorAll('.dtap-target').forEach(tap => {
+  tap.addEventListener('click', e => {
+    e.stopPropagation();
+    dismissComingSoon();
+    dismissSubScreen();
+    dismissMenu();
+    dismissDetail();
+    dismissAllCloseups();
   });
 });
 
