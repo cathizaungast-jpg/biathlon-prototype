@@ -267,7 +267,9 @@
       scrollbar-width: none;        /* keine Desktop-Scrollbar → Bild bleibt exakt 810px breit */
     }
     .detail-scroll::-webkit-scrollbar { display: none; }
-    .detail-img-wrap { position: relative; width: 100%; }
+    /* 30px Luft überm Bild: Überschriften am Seitenanfang (z.B. y=116
+       in detail-f1-1) würden sonst vom 120px-Header verdeckt */
+    .detail-img-wrap { position: relative; width: 100%; margin-top: 30px; }
     .detail-img-wrap > img { width: 100%; height: auto; display: block; }
 
     /* Detail opened from search list: lift above menu/sub-layer */
@@ -739,14 +741,14 @@
     <div class="menu-tap" data-action="back"   style="left:12px;  top:79px; width:88px; height:55px;"></div>
     <div class="menu-tap" data-action="target" style="left:auto; right:12px; top:79px; width:88px; height:55px;"></div>
     <!-- Suchliste: Tap → Detail-Seite an der passenden Überschrift
-         (scroll = ÜberschriftY − 136 = Header 120px + 16px Luft) -->
-    <div class="menu-tap" data-action="jump" data-jump="f1-1:2462" style="top:309px; height:60px;"></div><!-- Feinjustierungen hinterer Fuss -->
-    <div class="menu-tap" data-action="jump" data-jump="f1-1:746"  style="top:369px; height:60px;"></div><!-- Gesamtsystem Fussstellung -->
-    <div class="menu-tap" data-action="jump" data-jump="f1-2:1252" style="top:429px; height:60px;"></div><!-- Knopflöffel -->
-    <div class="menu-tap" data-action="jump" data-jump="f1-3:8"    style="top:489px; height:60px;"></div><!-- Schaftkappe richtig einsetzen -->
-    <div class="menu-tap" data-action="jump" data-jump="f1-1:3887" style="top:549px; height:60px;"></div><!-- Schuhwerk -->
-    <div class="menu-tap" data-action="jump" data-jump="f1-2:6"    style="top:609px; height:60px;"></div><!-- Variation der Hüfte -->
-    <div class="menu-tap" data-action="jump" data-jump="f1-3:1096" style="top:669px; height:60px;"></div><!-- Verschiedene Schaftkappen -->
+         (scroll = ÜberschriftY + 30px Spacer − 146 [Header 120 + 26 Luft]) -->
+    <div class="menu-tap" data-action="jump" data-jump="f1-1:2482" style="top:309px; height:60px;"></div><!-- Feinjustierungen hinterer Fuss -->
+    <div class="menu-tap" data-action="jump" data-jump="f1-1:766"  style="top:369px; height:60px;"></div><!-- Gesamtsystem Fussstellung -->
+    <div class="menu-tap" data-action="jump" data-jump="f1-2:1272" style="top:429px; height:60px;"></div><!-- Knopflöffel -->
+    <div class="menu-tap" data-action="jump" data-jump="f1-3:28"   style="top:489px; height:60px;"></div><!-- Schaftkappe richtig einsetzen -->
+    <div class="menu-tap" data-action="jump" data-jump="f1-1:3907" style="top:549px; height:60px;"></div><!-- Schuhwerk -->
+    <div class="menu-tap" data-action="jump" data-jump="f1-2:26"   style="top:609px; height:60px;"></div><!-- Variation der Hüfte -->
+    <div class="menu-tap" data-action="jump" data-jump="f1-3:1116" style="top:669px; height:60px;"></div><!-- Verschiedene Schaftkappen -->
     <div class="menu-tap" data-action="jump" data-jump="f1-1:0"    style="top:729px; height:84px;"></div><!-- Verteilung Gesamtgewicht (2-zeilig) -->
   </div>
 
